@@ -6,9 +6,9 @@ using VIRA.Shared.Views;
 
 namespace VIRA.Shared;
 
-public partial class App : Application
+public partial class App : Microsoft.UI.Xaml.Application
 {
-    public static new App Current => (App)Application.Current;
+    public static new App Current => (App)Microsoft.UI.Xaml.Application.Current;
     public IServiceProvider Services { get; }
 
     public App()
