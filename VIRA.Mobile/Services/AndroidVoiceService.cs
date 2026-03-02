@@ -2,6 +2,7 @@
 using Android.Content;
 using Android.Speech;
 using Android.Speech.Tts;
+using Android.Media;
 using VIRA.Shared.Services;
 
 namespace VIRA.Mobile.Services;
@@ -11,6 +12,7 @@ public class AndroidVoiceService : Java.Lang.Object, IVoiceService, TextToSpeech
     private TextToSpeech? _textToSpeech;
     private TaskCompletionSource<string>? _speechRecognitionTcs;
     private bool _isInitialized = false;
+    private MediaPlayer? _mediaPlayer;
 
     public bool IsAvailable => _isInitialized;
 
@@ -130,9 +132,10 @@ public class AndroidVoiceService : Java.Lang.Object, IVoiceService, TextToSpeech
 
     private Android.App.Activity? GetCurrentActivity()
     {
-        // This needs to be implemented based on your app's activity management
-        // For Uno Platform, you can access it via:
-        return Microsoft.UI.Xaml.Window.Current?.Content?.XamlRoot?.Content as Android.App.Activity;
+        // Get the current activity from Uno Platform's context
+        // The MainActivity is the current activity in Uno Platform Android apps
+        var activity = Uno.UI.ContextHelper.Current as Android.App.Activity;
+        return activity;
     }
 
     public void HandleActivityResult(int requestCode, Android.App.Result resultCode, Intent? data)
@@ -156,10 +159,103 @@ public class AndroidVoiceService : Java.Lang.Object, IVoiceService, TextToSpeech
         }
     }
 
+    public async Task PlayAudioAsync(byte[] audioData)
+    {
+        try
+        {
+            Android.Util.Log.Info("VIRA_Voice", $"🔊 Playing audio (size: {audioData.Length} bytes)");
+            
+            // Stop any currently playing audio
+            StopAudio();
+            
+            // Create temp file for audio
+            var tempPath = System.IO.Path.Combine(
+                Android.App.Application.Context.CacheDir?.AbsolutePath ?? "/data/local/tmp",
+                $"vira_tts_{Guid.NewGuid()}.mp3"
+            );
+            
+            // Write audio data to file
+            await System.IO.File.WriteAllBytesAsync(tempPath, audioData);
+            Android.Util.Log.Info("VIRA_Voice", $"✅ Audio saved to: {tempPath}");
+            
+            // Play audio using MediaPlayer
+            _mediaPlayer = new MediaPlayer();
+            _mediaPlayer.SetDataSource(tempPath);
+            _mediaPlayer.Prepare();
+            
+            var tcs = new TaskCompletionSource<bool>();
+            
+            _mediaPlayer.Completion += (sender, e) =>
+            {
+                Android.Util.Log.Info("VIRA_Voice", "✅ Audio playback completed");
+                
+                // Cleanup
+                _mediaPlayer?.Release();
+                _mediaPlayer = null;
+                
+                // Delete temp file
+                try
+                {
+                    if (System.IO.File.Exists(tempPath))
+                    {
+                        System.IO.File.Delete(tempPath);
+                    }
+                }
+                catch { }
+                
+                tcs.TrySetResult(true);
+            };
+            
+            _mediaPlayer.Error += (sender, e) =>
+            {
+                Android.Util.Log.Error("VIRA_Voice", $"❌ Audio playback error: {e.What}");
+                
+                // Cleanup
+                _mediaPlayer?.Release();
+                _mediaPlayer = null;
+                
+                tcs.TrySetResult(false);
+            };
+            
+            _mediaPlayer.Start();
+            Android.Util.Log.Info("VIRA_Voice", "▶️ Audio playback started");
+            
+            await tcs.Task;
+        }
+        catch (Exception ex)
+        {
+            Android.Util.Log.Error("VIRA_Voice", $"❌ Error playing audio: {ex.Message}");
+            throw;
+        }
+    }
+    
+    public void StopAudio()
+    {
+        try
+        {
+            if (_mediaPlayer != null)
+            {
+                if (_mediaPlayer.IsPlaying)
+                {
+                    _mediaPlayer.Stop();
+                }
+                _mediaPlayer.Release();
+                _mediaPlayer = null;
+                
+                Android.Util.Log.Info("VIRA_Voice", "⏹️ Audio playback stopped");
+            }
+        }
+        catch (Exception ex)
+        {
+            Android.Util.Log.Error("VIRA_Voice", $"Error stopping audio: {ex.Message}");
+        }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+            StopAudio();
             _textToSpeech?.Stop();
             _textToSpeech?.Shutdown();
             _textToSpeech?.Dispose();

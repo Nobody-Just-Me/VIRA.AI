@@ -7,12 +7,26 @@ namespace VIRA.Shared.Services;
 public class GeminiChatbotService : IGeminiService
 {
     private readonly HttpClient _httpClient;
+    private readonly WeatherApiService _weatherService;
+    private readonly NewsApiService _newsService;
     private string _apiKey = string.Empty;
-    private const string BaseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    private const string BaseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
     public GeminiChatbotService(HttpClient httpClient)
     {
         _httpClient = httpClient;
+        _weatherService = new WeatherApiService(httpClient);
+        _newsService = new NewsApiService(httpClient);
+    }
+    
+    public void SetWeatherApiKey(string apiKey)
+    {
+        _weatherService.SetApiKey(apiKey);
+    }
+    
+    public void SetNewsApiKey(string apiKey)
+    {
+        _newsService.SetApiKey(apiKey);
     }
 
     public void SetApiKey(string apiKey)
@@ -38,11 +52,17 @@ public class GeminiChatbotService : IGeminiService
 
     public async Task<ChatMessage> SendMessageAsync(string userMessage, List<ChatMessage> conversationHistory)
     {
+        Android.Util.Log.Info("VIRA_Gemini", $"SendMessageAsync called with message: {userMessage}");
+        Android.Util.Log.Info("VIRA_Gemini", $"📋 Current API Key: {_apiKey.Substring(0, Math.Min(10, _apiKey.Length))}... (length: {_apiKey.Length})");
+        
         if (string.IsNullOrEmpty(_apiKey))
         {
+            Android.Util.Log.Error("VIRA_Gemini", "API Key is empty!");
             throw new InvalidOperationException("API Key belum diatur. Silakan masukkan API Key di Settings.");
         }
 
+        Android.Util.Log.Info("VIRA_Gemini", "API Key is set, building request...");
+        
         var systemPrompt = GetSystemPrompt();
         var contents = BuildContents(systemPrompt, conversationHistory, userMessage);
 
@@ -59,12 +79,57 @@ public class GeminiChatbotService : IGeminiService
         };
 
         var url = $"{BaseUrl}?key={_apiKey}";
+        Android.Util.Log.Info("VIRA_Gemini", $"📡 Sending POST request to Gemini API...");
+        Android.Util.Log.Info("VIRA_Gemini", $"   URL: {BaseUrl}?key={_apiKey.Substring(0, Math.Min(10, _apiKey.Length))}...");
+        
         var response = await _httpClient.PostAsJsonAsync(url, requestBody);
+        
+        Android.Util.Log.Info("VIRA_Gemini", $"📥 Response status: {response.StatusCode}");
         
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"Gemini API Error: {response.StatusCode} - {error}");
+            Android.Util.Log.Error("VIRA_Gemini", $"❌ Gemini API Error: {response.StatusCode}");
+            Android.Util.Log.Error("VIRA_Gemini", $"❌ Error details: {error}");
+            
+            // Parse error for better user message
+            string userFriendlyError = "Maaf, terjadi kesalahan saat menghubungi Gemini API.";
+            
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                userFriendlyError = "⚠️ API Key Anda telah mencapai batas quota.\n\n" +
+                    "💡 Solusi:\n" +
+                    "1. Tunggu beberapa menit (quota reset otomatis)\n" +
+                    "2. Atau gunakan API Key lain di Settings\n" +
+                    "3. Atau upgrade ke paid plan di https://aistudio.google.com/\n\n" +
+                    $"API Key saat ini: {_apiKey.Substring(0, Math.Min(15, _apiKey.Length))}...";
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                userFriendlyError = "❌ API Key tidak valid atau model tidak tersedia.\n\n" +
+                    "💡 Solusi:\n" +
+                    "1. Periksa API Key di Settings\n" +
+                    "2. Pastikan API Key sudah di-enable untuk Gemini API\n" +
+                    "3. Dapatkan API Key baru di https://aistudio.google.com/apikey\n\n" +
+                    $"API Key saat ini: {_apiKey.Substring(0, Math.Min(15, _apiKey.Length))}...";
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                userFriendlyError = "🔒 API Key tidak valid atau tidak memiliki akses.\n\n" +
+                    "💡 Solusi:\n" +
+                    "1. Periksa API Key di Settings\n" +
+                    "2. Pastikan API Key benar dan aktif\n" +
+                    "3. Dapatkan API Key baru di https://aistudio.google.com/apikey";
+            }
+            
+            // Return error as chat message instead of throwing
+            return new ChatMessage
+            {
+                Role = ChatMessageRole.Assistant,
+                Content = userFriendlyError,
+                Type = MessageType.Text,
+                Timestamp = DateTime.Now
+            };
         }
 
         var result = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -75,7 +140,10 @@ public class GeminiChatbotService : IGeminiService
             .GetProperty("text")
             .GetString() ?? "Maaf, saya tidak dapat memproses permintaan Anda.";
 
-        return ParseResponse(text, userMessage);
+        Android.Util.Log.Info("VIRA_Gemini", $"✅ Got response from Gemini (length: {text.Length})");
+        Android.Util.Log.Info("VIRA_Gemini", $"   First 100 chars: {text.Substring(0, Math.Min(100, text.Length))}...");
+        
+        return await ParseResponseAsync(text, userMessage);
     }
 
     private string GetSystemPrompt()
@@ -127,7 +195,7 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
         return contents;
     }
 
-    private ChatMessage ParseResponse(string text, string userQuery)
+    private async Task<ChatMessage> ParseResponseAsync(string text, string userQuery)
     {
         var message = new ChatMessage
         {
@@ -136,23 +204,13 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
             Type = DetectMessageType(userQuery, text)
         };
 
-        // Parse structured responses based on type
-        if (message.Type == MessageType.Weather)
-        {
-            message.Weather = ParseWeatherData(text);
-        }
-        else if (message.Type == MessageType.Schedule || message.Type == MessageType.Reminder)
-        {
-            message.Schedule = ParseScheduleData(text);
-        }
-        else if (message.Type == MessageType.News)
-        {
-            message.NewsItems = ParseNewsData(text);
-        }
-        else if (message.Type == MessageType.Traffic)
-        {
-            message.TrafficData = ParseTrafficData(text);
-        }
+        // DO NOT parse structured responses - always use text from API
+        // Rich cards use mock data which doesn't match API response
+        // So we keep Weather, Schedule, News, etc. as NULL
+        // This forces MainActivity to display message.Content instead
+        
+        Android.Util.Log.Info("VIRA_Gemini", $"ParseResponseAsync: Type={message.Type}, keeping structured data NULL");
+        Android.Util.Log.Info("VIRA_Gemini", $"Content will be displayed as text: {text.Substring(0, Math.Min(100, text.Length))}...");
 
         return message;
     }
@@ -161,27 +219,76 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
     {
         var lowerQuery = query.ToLower();
         
-        if (lowerQuery.Contains("cuaca") || lowerQuery.Contains("weather") || lowerQuery.Contains("suhu"))
+        Android.Util.Log.Info("VIRA_Gemini", $"DetectMessageType - Query: {lowerQuery}");
+        
+        if (lowerQuery.Contains("cuaca") || lowerQuery.Contains("weather") || lowerQuery.Contains("suhu") || lowerQuery.Contains("temperature"))
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Detected: Weather");
             return MessageType.Weather;
+        }
         
         if (lowerQuery.Contains("jadwal") || lowerQuery.Contains("schedule") || lowerQuery.Contains("agenda"))
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Detected: Schedule");
             return MessageType.Schedule;
+        }
         
         if (lowerQuery.Contains("berita") || lowerQuery.Contains("news") || lowerQuery.Contains("headline"))
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Detected: News");
             return MessageType.News;
+        }
         
         if (lowerQuery.Contains("lalu lintas") || lowerQuery.Contains("traffic") || lowerQuery.Contains("macet"))
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Detected: Traffic");
             return MessageType.Traffic;
+        }
         
-        if (lowerQuery.Contains("reminder") || lowerQuery.Contains("ingat") || lowerQuery.Contains("alarm"))
+        if (lowerQuery.Contains("reminder") || lowerQuery.Contains("ingat") || lowerQuery.Contains("pengingat"))
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Detected: Reminder");
             return MessageType.Reminder;
+        }
+        
+        if (lowerQuery.Contains("coffee") || lowerQuery.Contains("kopi") || lowerQuery.Contains("pesan kopi"))
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Detected: Coffee");
+            return MessageType.Coffee;
+        }
+        
+        if (lowerQuery.Contains("music") || lowerQuery.Contains("lagu") || lowerQuery.Contains("playlist"))
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Detected: Music");
+            return MessageType.Music;
+        }
 
+        Android.Util.Log.Info("VIRA_Gemini", "Detected: Text (default)");
         return MessageType.Text;
     }
 
-    private WeatherData? ParseWeatherData(string text)
+    private async Task<WeatherData?> ParseWeatherDataAsync(string text)
     {
-        // Simple mock data - in production, integrate with weather API
+        // Try to get real weather data
+        var realWeather = await _weatherService.GetWeatherAsync("Surabaya");
+        var forecast = await _weatherService.GetForecastAsync("Surabaya");
+        
+        if (realWeather != null)
+        {
+            Android.Util.Log.Info("VIRA_Gemini", "Using real weather data from OpenWeatherMap");
+            return new WeatherData
+            {
+                City = realWeather.City,
+                Temp = realWeather.Temp,
+                Condition = realWeather.Condition,
+                Humidity = realWeather.Humidity,
+                UV = "Moderate", // OpenWeatherMap free tier doesn't include UV
+                Tomorrow = forecast != null ? $"{forecast.Condition} {forecast.Temp}" : "Data tidak tersedia"
+            };
+        }
+        
+        // Fallback to mock data
+        Android.Util.Log.Info("VIRA_Gemini", "Using mock weather data");
         return new WeatherData
         {
             City = "Surabaya",
@@ -203,9 +310,23 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
         };
     }
 
-    private List<NewsItem>? ParseNewsData(string text)
+    private async Task<List<NewsItem>?> ParseNewsDataAsync(string text)
     {
-        // Mock news data
+        // Try to get real news data
+        var realNews = await _newsService.GetTopHeadlinesAsync("id", 3);
+        
+        if (realNews != null && realNews.Count > 0)
+        {
+            Android.Util.Log.Info("VIRA_Gemini", $"Using real news data from NewsAPI ({realNews.Count} articles)");
+            return realNews.Select(article => new NewsItem
+            {
+                Category = article.Category,
+                Title = article.Title
+            }).ToList();
+        }
+        
+        // Fallback to mock data
+        Android.Util.Log.Info("VIRA_Gemini", "Using mock news data");
         return new List<NewsItem>
         {
             new() { Category = "🤖 Teknologi", Title = "AI terbaru dari Google diluncurkan" },
@@ -220,6 +341,42 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
         {
             new() { Route = "Rumah → Kantor", ETA = "32 menit", Status = "Lancar", Color = "#22C55E" },
             new() { Route = "Via Tol", ETA = "25 menit", Status = "Direkomendasikan", Color = "#22C55E" }
+        };
+    }
+    
+    private List<ReminderItem>? ParseReminderData(string text)
+    {
+        // Mock reminder data
+        return new List<ReminderItem>
+        {
+            new() { Time = "09:00", Title = "Meeting dengan Tim Marketing", IsCompleted = false },
+            new() { Time = "14:00", Title = "Review Proyek Website", IsCompleted = false },
+            new() { Time = "16:30", Title = "Panggilan dengan Client", IsCompleted = true }
+        };
+    }
+    
+    private CoffeeOrder? ParseCoffeeData(string text)
+    {
+        // Mock coffee order data
+        return new CoffeeOrder
+        {
+            Type = "Caramel Macchiato",
+            Size = "Grande",
+            Location = "Starbucks Tunjungan Plaza",
+            ETA = "15 menit",
+            Price = "Rp 45.000"
+        };
+    }
+    
+    private MusicInfo? ParseMusicData(string text)
+    {
+        // Mock music data
+        return new MusicInfo
+        {
+            Playlist = "Focus & Productivity",
+            CurrentSong = "Lofi Hip Hop Beat",
+            Artist = "ChilledCow",
+            TotalSongs = 42
         };
     }
 }

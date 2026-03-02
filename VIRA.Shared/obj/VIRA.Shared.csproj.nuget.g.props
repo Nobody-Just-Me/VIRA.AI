@@ -14,16 +14,16 @@
   </ItemGroup>
   <ImportGroup Condition=" '$(TargetFramework)' == 'net8.0' AND '$(ExcludeRestorePackageImports)' != 'true' ">
     <Import Project="$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props" Condition="Exists('$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props')" />
-    <Import Project="$(NuGetPackageRoot)uno.winui/5.1.31/buildTransitive/net7.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.1.31/buildTransitive/net7.0/uno.winui.props')" />
+    <Import Project="$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net7.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net7.0/uno.winui.props')" />
   </ImportGroup>
   <ImportGroup Condition=" '$(TargetFramework)' == 'net8.0-android' AND '$(ExcludeRestorePackageImports)' != 'true' ">
     <Import Project="$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props" Condition="Exists('$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props')" />
-    <Import Project="$(NuGetPackageRoot)uno.winui/5.1.31/buildTransitive/net8.0-android30.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.1.31/buildTransitive/net8.0-android30.0/uno.winui.props')" />
+    <Import Project="$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net8.0-android30.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net8.0-android30.0/uno.winui.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0' AND '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.1.31</PkgUno_WinUI>
+    <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.0.19</PkgUno_WinUI>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0-android' AND '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.1.31</PkgUno_WinUI>
+    <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.0.19</PkgUno_WinUI>
   </PropertyGroup>
 </Project>

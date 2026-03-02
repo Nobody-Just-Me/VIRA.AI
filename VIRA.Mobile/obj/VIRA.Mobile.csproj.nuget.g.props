@@ -14,12 +14,12 @@
   </ItemGroup>
   <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <Import Project="$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props" Condition="Exists('$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props')" />
-    <Import Project="$(NuGetPackageRoot)uno.winui/5.1.31/buildTransitive/net8.0-android30.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.1.31/buildTransitive/net8.0-android30.0/uno.winui.props')" />
+    <Import Project="$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net8.0-android30.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net8.0-android30.0/uno.winui.props')" />
     <Import Project="$(NuGetPackageRoot)microsoft.net.illink.tasks/8.0.24/build/Microsoft.NET.ILLink.Tasks.props" Condition="Exists('$(NuGetPackageRoot)microsoft.net.illink.tasks/8.0.24/build/Microsoft.NET.ILLink.Tasks.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.1.31</PkgUno_WinUI>
-    <PkgUno_WinUI_DevServer Condition=" '$(PkgUno_WinUI_DevServer)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui.devserver/5.1.31</PkgUno_WinUI_DevServer>
+    <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.0.19</PkgUno_WinUI>
+    <PkgUno_WinUI_DevServer Condition=" '$(PkgUno_WinUI_DevServer)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui.devserver/5.0.19</PkgUno_WinUI_DevServer>
     <PkgMicrosoft_NET_ILLink_Tasks Condition=" '$(PkgMicrosoft_NET_ILLink_Tasks)' == '' ">/home/fwwzfa/.nuget/packages/microsoft.net.illink.tasks/8.0.24</PkgMicrosoft_NET_ILLink_Tasks>
   </PropertyGroup>
 </Project>

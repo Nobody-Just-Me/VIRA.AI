@@ -29,7 +29,9 @@ public partial class MainChatViewModel : ObservableObject
         _geminiService = geminiService;
         _voiceService = voiceService;
         
-        InitializeWelcomeMessage();
+        // Don't add welcome message here - let MainActivity handle it
+        // This prevents duplicate or conflicting welcome messages
+        // InitializeWelcomeMessage();
     }
 
     private void InitializeWelcomeMessage()
@@ -82,11 +84,9 @@ public partial class MainChatViewModel : ObservableObject
             
             Messages.Add(response);
 
-            // Speak response if voice is available
-            if (_voiceService.IsAvailable && !string.IsNullOrEmpty(response.Content))
-            {
-                _ = _voiceService.SpeakAsync(response.Content);
-            }
+            // NOTE: Voice synthesis is now handled by MainActivity using ElevenLabs TTS
+            // The old Google TTS call has been removed to prevent conflict
+            // MainActivity will call SynthesizeAndPlaySpeechAsync() after getting the response
         }
         catch (Exception ex)
         {

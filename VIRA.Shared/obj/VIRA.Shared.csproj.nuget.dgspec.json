@@ -64,8 +64,9 @@
               "version": "[8.0.0, )"
             },
             "Uno.WinUI": {
+              "include": "Runtime, Compile, Build, Native, ContentFiles, BuildTransitive",
               "target": "Package",
-              "version": "[5.1.0, )"
+              "version": "[5.0.0, )"
             }
           },
           "imports": [
@@ -112,8 +113,9 @@
               "version": "[8.0.0, )"
             },
             "Uno.WinUI": {
+              "include": "Runtime, Compile, Build, Native, ContentFiles, BuildTransitive",
               "target": "Package",
-              "version": "[5.1.0, )"
+              "version": "[5.0.0, )"
             }
           },
           "imports": [

@@ -14,7 +14,9 @@ public enum MessageType
     Weather,
     News,
     Reminder,
-    Traffic
+    Traffic,
+    Coffee,
+    Music
 }
 
 public class ChatMessage
@@ -31,6 +33,9 @@ public class ChatMessage
     public WeatherData? Weather { get; set; }
     public List<NewsItem>? NewsItems { get; set; }
     public List<TrafficRoute>? TrafficData { get; set; }
+    public List<ReminderItem>? Reminders { get; set; }
+    public CoffeeOrder? Coffee { get; set; }
+    public MusicInfo? Music { get; set; }
 }
 
 public class ScheduleItem
@@ -63,4 +68,28 @@ public class TrafficRoute
     public string ETA { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string Color { get; set; } = "#22C55E";
+}
+
+public class ReminderItem
+{
+    public string Time { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public bool IsCompleted { get; set; }
+}
+
+public class CoffeeOrder
+{
+    public string Type { get; set; } = string.Empty;
+    public string Size { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public string ETA { get; set; } = string.Empty;
+    public string Price { get; set; } = string.Empty;
+}
+
+public class MusicInfo
+{
+    public string Playlist { get; set; } = string.Empty;
+    public string CurrentSong { get; set; } = string.Empty;
+    public string Artist { get; set; } = string.Empty;
+    public int TotalSongs { get; set; }
 }
