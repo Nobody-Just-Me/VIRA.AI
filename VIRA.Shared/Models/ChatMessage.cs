@@ -28,6 +28,9 @@ public class ChatMessage
     public DateTime Timestamp { get; set; } = DateTime.Now;
     public bool IsVoiceGenerated { get; set; }
     
+    // Processing metadata
+    public Dictionary<string, object>? Metadata { get; set; }
+    
     // Optional structured data
     public List<ScheduleItem>? Schedule { get; set; }
     public WeatherData? Weather { get; set; }

@@ -1,14 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using VIRA.Shared.Services;
+using VIRA.Mobile.SharedServices;
 using VIRA.Mobile.Services;
 
 namespace VIRA.Mobile;
 
-public class App : VIRA.Shared.App
+public class App
 {
-    protected override void ConfigurePlatformServices(IServiceCollection services)
-    {
-        // Replace dummy voice service with Android implementation
-        services.AddSingleton<IVoiceService, AndroidVoiceService>();
-    }
+    // Removed inheritance from VIRA.Shared.App since we no longer depend on it
+    // This is now a standalone Android app
 }

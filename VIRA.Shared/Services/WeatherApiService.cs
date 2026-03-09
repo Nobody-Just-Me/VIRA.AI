@@ -23,7 +23,9 @@ public class WeatherApiService
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
+#if __ANDROID__
             Android.Util.Log.Warn("VIRA_Weather", "OpenWeatherMap API Key not set, using mock data");
+#endif
             return null;
         }
 
@@ -34,7 +36,9 @@ public class WeatherApiService
 
             if (!response.IsSuccessStatusCode)
             {
+#if __ANDROID__
                 Android.Util.Log.Error("VIRA_Weather", $"API Error: {response.StatusCode}");
+#endif
                 return null;
             }
 
@@ -53,7 +57,9 @@ public class WeatherApiService
         }
         catch (Exception ex)
         {
+#if __ANDROID__
             Android.Util.Log.Error("VIRA_Weather", $"Exception: {ex.Message}");
+#endif
             return null;
         }
     }
@@ -89,7 +95,9 @@ public class WeatherApiService
         }
         catch (Exception ex)
         {
+#if __ANDROID__
             Android.Util.Log.Error("VIRA_Weather", $"Forecast Exception: {ex.Message}");
+#endif
             return null;
         }
     }

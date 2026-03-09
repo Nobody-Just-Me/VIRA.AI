@@ -21,14 +21,18 @@ public class ElevenLabsTTSService : ITTSService
     public void SetApiKey(string apiKey)
     {
         _apiKey = apiKey;
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_ElevenLabs", $"API Key set (length: {apiKey.Length})");
+        #endif
     }
     
     public async Task<bool> TestConnectionAsync()
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
+            #if __ANDROID__
             Android.Util.Log.Error("VIRA_ElevenLabs", "API Key is empty");
+            #endif
             return false;
         }
         
@@ -41,18 +45,24 @@ public class ElevenLabsTTSService : ITTSService
             
             if (response.IsSuccessStatusCode)
             {
+                #if __ANDROID__
                 Android.Util.Log.Info("VIRA_ElevenLabs", "✅ Connection test successful");
+                #endif
                 return true;
             }
             else
             {
+                #if __ANDROID__
                 Android.Util.Log.Error("VIRA_ElevenLabs", $"❌ Connection test failed: {response.StatusCode}");
+                #endif
                 return false;
             }
         }
         catch (Exception ex)
         {
+            #if __ANDROID__
             Android.Util.Log.Error("VIRA_ElevenLabs", $"❌ Connection test error: {ex.Message}");
+            #endif
             return false;
         }
     }
@@ -61,11 +71,15 @@ public class ElevenLabsTTSService : ITTSService
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
+            #if __ANDROID__
             Android.Util.Log.Error("VIRA_ElevenLabs", "API Key is empty!");
+            #endif
             throw new InvalidOperationException("ElevenLabs API Key belum diatur. Silakan masukkan API Key di Settings.");
         }
         
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_ElevenLabs", $"🎤 Synthesizing speech for text: {text.Substring(0, Math.Min(50, text.Length))}...");
+        #endif
         
         try
         {
@@ -87,17 +101,25 @@ public class ElevenLabsTTSService : ITTSService
             _httpClient.DefaultRequestHeaders.Add("Accept", "audio/mpeg");
             
             var url = $"{BaseUrl}/text-to-speech/{VoiceId}";
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_ElevenLabs", $"📡 Sending request to: {url}");
+            #endif
             
             var response = await _httpClient.PostAsJsonAsync(url, requestBody);
             
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_ElevenLabs", $"📥 Response status: {response.StatusCode}");
+            #endif
             
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
+                #if __ANDROID__
                 Android.Util.Log.Error("VIRA_ElevenLabs", $"❌ ElevenLabs API Error: {response.StatusCode}");
+                #endif
+                #if __ANDROID__
                 Android.Util.Log.Error("VIRA_ElevenLabs", $"❌ Error details: {error}");
+                #endif
                 
                 string userFriendlyError = "Maaf, terjadi kesalahan saat menghasilkan suara.";
                 
@@ -121,13 +143,17 @@ public class ElevenLabsTTSService : ITTSService
             }
             
             var audioBytes = await response.Content.ReadAsByteArrayAsync();
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_ElevenLabs", $"✅ Got audio data (size: {audioBytes.Length} bytes)");
+            #endif
             
             return audioBytes;
         }
         catch (Exception ex)
         {
+            #if __ANDROID__
             Android.Util.Log.Error("VIRA_ElevenLabs", $"❌ Error synthesizing speech: {ex.Message}");
+            #endif
             throw;
         }
     }

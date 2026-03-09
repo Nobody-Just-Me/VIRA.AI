@@ -53,16 +53,24 @@ public class GroqChatbotService : IGeminiService
 
     public async Task<ChatMessage> SendMessageAsync(string userMessage, List<ChatMessage> conversationHistory)
     {
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"SendMessageAsync called with message: {userMessage}");
+        #endif
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"📋 Current API Key: {_apiKey.Substring(0, Math.Min(10, _apiKey.Length))}... (length: {_apiKey.Length})");
+        #endif
         
         if (string.IsNullOrEmpty(_apiKey))
         {
+            #if __ANDROID__
             Android.Util.Log.Error("VIRA_Groq", "API Key is empty!");
+            #endif
             throw new InvalidOperationException("Groq API Key belum diatur. Silakan masukkan API Key di Settings.");
         }
 
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", "API Key is set, building request...");
+        #endif
         
         var systemPrompt = GetSystemPrompt();
         var messages = BuildMessages(systemPrompt, conversationHistory, userMessage);
@@ -79,18 +87,28 @@ public class GroqChatbotService : IGeminiService
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"📡 Sending POST request to Groq API...");
+        #endif
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"   Model: {DefaultModel}");
+        #endif
         
         var response = await _httpClient.PostAsJsonAsync(BaseUrl, requestBody);
         
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"📥 Response status: {response.StatusCode}");
+        #endif
         
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
+            #if __ANDROID__
             Android.Util.Log.Error("VIRA_Groq", $"❌ Groq API Error: {response.StatusCode}");
+            #endif
+            #if __ANDROID__
             Android.Util.Log.Error("VIRA_Groq", $"❌ Error details: {error}");
+            #endif
             
             // Parse error for better user message
             string userFriendlyError = "Maaf, terjadi kesalahan saat menghubungi Groq API.";
@@ -137,8 +155,12 @@ public class GroqChatbotService : IGeminiService
             .GetProperty("content")
             .GetString() ?? "Maaf, saya tidak dapat memproses permintaan Anda.";
 
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"✅ Got response from Groq (length: {text.Length})");
+        #endif
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"   First 100 chars: {text.Substring(0, Math.Min(100, text.Length))}...");
+        #endif
         
         return await ParseResponseAsync(text, userMessage);
     }
@@ -205,8 +227,12 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
         // So we keep Weather, Schedule, News, etc. as NULL
         // This forces MainActivity to display message.Content instead
         
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"ParseResponseAsync: Type={message.Type}, keeping structured data NULL");
+        #endif
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"Content will be displayed as text: {text.Substring(0, Math.Min(100, text.Length))}...");
+        #endif
 
         return message;
     }
@@ -215,51 +241,69 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
     {
         var lowerQuery = query.ToLower();
         
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", $"DetectMessageType - Query: {lowerQuery}");
+        #endif
         
         if (lowerQuery.Contains("cuaca") || lowerQuery.Contains("weather") || lowerQuery.Contains("suhu") || lowerQuery.Contains("temperature"))
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Detected: Weather");
+            #endif
             return MessageType.Weather;
         }
         
         if (lowerQuery.Contains("jadwal") || lowerQuery.Contains("schedule") || lowerQuery.Contains("agenda"))
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Detected: Schedule");
+            #endif
             return MessageType.Schedule;
         }
         
         if (lowerQuery.Contains("berita") || lowerQuery.Contains("news") || lowerQuery.Contains("headline"))
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Detected: News");
+            #endif
             return MessageType.News;
         }
         
         if (lowerQuery.Contains("lalu lintas") || lowerQuery.Contains("traffic") || lowerQuery.Contains("macet"))
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Detected: Traffic");
+            #endif
             return MessageType.Traffic;
         }
         
         if (lowerQuery.Contains("reminder") || lowerQuery.Contains("ingat") || lowerQuery.Contains("pengingat"))
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Detected: Reminder");
+            #endif
             return MessageType.Reminder;
         }
         
         if (lowerQuery.Contains("coffee") || lowerQuery.Contains("kopi") || lowerQuery.Contains("pesan kopi"))
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Detected: Coffee");
+            #endif
             return MessageType.Coffee;
         }
         
         if (lowerQuery.Contains("music") || lowerQuery.Contains("lagu") || lowerQuery.Contains("playlist"))
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Detected: Music");
+            #endif
             return MessageType.Music;
         }
 
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", "Detected: Text (default)");
+        #endif
         return MessageType.Text;
     }
 
@@ -270,7 +314,9 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
         
         if (realWeather != null)
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", "Using real weather data from OpenWeatherMap");
+            #endif
             return new WeatherData
             {
                 City = realWeather.City,
@@ -282,7 +328,9 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
             };
         }
         
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", "Using mock weather data");
+        #endif
         return new WeatherData
         {
             City = "Surabaya",
@@ -309,7 +357,9 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
         
         if (realNews != null && realNews.Count > 0)
         {
+            #if __ANDROID__
             Android.Util.Log.Info("VIRA_Groq", $"Using real news data from NewsAPI ({realNews.Count} articles)");
+            #endif
             return realNews.Select(article => new NewsItem
             {
                 Category = article.Category,
@@ -317,7 +367,9 @@ Jika pengguna menanyakan cuaca, jadwal, berita, atau lalu lintas, berikan respon
             }).ToList();
         }
         
+        #if __ANDROID__
         Android.Util.Log.Info("VIRA_Groq", "Using mock news data");
+        #endif
         return new List<NewsItem>
         {
             new() { Category = "🤖 Teknologi", Title = "AI terbaru dari Google diluncurkan" },

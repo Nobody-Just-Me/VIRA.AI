@@ -12,18 +12,27 @@
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <SourceRoot Include="/home/fwwzfa/.nuget/packages/" />
   </ItemGroup>
+  <ImportGroup Condition=" '$(TargetFramework)' == '' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)xunit.core/2.6.2/buildMultiTargeting/xunit.core.props" Condition="Exists('$(NuGetPackageRoot)xunit.core/2.6.2/buildMultiTargeting/xunit.core.props')" />
+  </ImportGroup>
   <ImportGroup Condition=" '$(TargetFramework)' == 'net8.0' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)xunit.runner.visualstudio/2.5.4/build/net6.0/xunit.runner.visualstudio.props" Condition="Exists('$(NuGetPackageRoot)xunit.runner.visualstudio/2.5.4/build/net6.0/xunit.runner.visualstudio.props')" />
+    <Import Project="$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.props" Condition="Exists('$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.props')" />
     <Import Project="$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props" Condition="Exists('$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props')" />
     <Import Project="$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net7.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net7.0/uno.winui.props')" />
   </ImportGroup>
   <ImportGroup Condition=" '$(TargetFramework)' == 'net8.0-android' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)xunit.runner.visualstudio/2.5.4/build/net6.0/xunit.runner.visualstudio.props" Condition="Exists('$(NuGetPackageRoot)xunit.runner.visualstudio/2.5.4/build/net6.0/xunit.runner.visualstudio.props')" />
+    <Import Project="$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.props" Condition="Exists('$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.props')" />
     <Import Project="$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props" Condition="Exists('$(NuGetPackageRoot)uno.fonts.fluent/2.3.0/buildTransitive/Uno.Fonts.Fluent.props')" />
     <Import Project="$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net8.0-android30.0/uno.winui.props" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net8.0-android30.0/uno.winui.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Pkgxunit_analyzers Condition=" '$(Pkgxunit_analyzers)' == '' ">/home/fwwzfa/.nuget/packages/xunit.analyzers/1.6.0</Pkgxunit_analyzers>
     <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.0.19</PkgUno_WinUI>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net8.0-android' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Pkgxunit_analyzers Condition=" '$(Pkgxunit_analyzers)' == '' ">/home/fwwzfa/.nuget/packages/xunit.analyzers/1.6.0</Pkgxunit_analyzers>
     <PkgUno_WinUI Condition=" '$(PkgUno_WinUI)' == '' ">/home/fwwzfa/.nuget/packages/uno.winui/5.0.19</PkgUno_WinUI>
   </PropertyGroup>
 </Project>

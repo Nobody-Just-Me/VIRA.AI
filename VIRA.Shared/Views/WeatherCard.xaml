@@ -1,0 +1,60 @@
+<UserControl x:Class="VIRA.Shared.Views.WeatherCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:VIRA.Shared.Models">
+    
+    <Border Background="{StaticResource SemiTransparentWhite5Brush}" 
+            BorderBrush="{StaticResource SemiTransparentWhite14Brush}" 
+            BorderThickness="1"
+            CornerRadius="{StaticResource MediumRadius}"
+            Padding="{StaticResource SpacingMedium}">
+        
+        <StackPanel Spacing="{StaticResource SpacingSmall}">
+            <!-- City Name -->
+            <TextBlock Text="{x:Bind Data.City, Mode=OneWay}" 
+                       FontSize="{StaticResource FontSizeLarge}" 
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            
+            <!-- Temperature and Conditions Grid -->
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Large Temperature Display -->
+                <TextBlock Grid.Column="0"
+                           Text="{x:Bind Data.Temp, Mode=OneWay}" 
+                           FontSize="{StaticResource FontSizeHuge}" 
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TextWhiteBrush}"/>
+                
+                <!-- Weather Details -->
+                <StackPanel Grid.Column="1" 
+                            VerticalAlignment="Center" 
+                            Margin="16,0,0,0"
+                            Spacing="2">
+                    <TextBlock Text="{x:Bind Data.Condition, Mode=OneWay}" 
+                               FontSize="{StaticResource FontSizeNormal}" 
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="{x:Bind Data.Humidity, Mode=OneWay}" 
+                               FontSize="{StaticResource FontSizeSmall}" 
+                               Foreground="{StaticResource TextTertiaryBrush}"/>
+                    <TextBlock Text="{x:Bind Data.UV, Mode=OneWay}" 
+                               FontSize="{StaticResource FontSizeSmall}" 
+                               Foreground="{StaticResource TextTertiaryBrush}"/>
+                </StackPanel>
+            </Grid>
+            
+            <!-- Tomorrow's Forecast -->
+            <Border Background="{StaticResource SemiTransparentWhite8Brush}" 
+                    CornerRadius="{StaticResource SmallRadius}" 
+                    Padding="12"
+                    Margin="0,4,0,0">
+                <TextBlock Text="{x:Bind Data.Tomorrow, Mode=OneWay}" 
+                           FontSize="{StaticResource FontSizeMedium}" 
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+            </Border>
+        </StackPanel>
+    </Border>
+</UserControl>

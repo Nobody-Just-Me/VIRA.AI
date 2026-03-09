@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/fwwzfa/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj": {}
+    "/mnt/Data1/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj": {}
   },
   "projects": {
-    "/home/fwwzfa/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj": {
+    "/mnt/Data1/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/fwwzfa/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj",
+        "projectUniqueName": "/mnt/Data1/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj",
         "projectName": "VIRA.Shared",
-        "projectPath": "/home/fwwzfa/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj",
+        "projectPath": "/mnt/Data1/Test ai/VIRA-UNO/VIRA.Shared/VIRA.Shared.csproj",
         "packagesPath": "/home/fwwzfa/.nuget/packages/",
-        "outputPath": "/home/fwwzfa/Test ai/VIRA-UNO/VIRA.Shared/obj/",
+        "outputPath": "/mnt/Data1/Test ai/VIRA-UNO/VIRA.Shared/obj/",
         "projectStyle": "PackageReference",
         "crossTargeting": true,
         "configFilePaths": [
@@ -55,6 +55,14 @@
               "target": "Package",
               "version": "[8.2.2, )"
             },
+            "FsCheck": {
+              "target": "Package",
+              "version": "[2.16.6, )"
+            },
+            "FsCheck.Xunit": {
+              "target": "Package",
+              "version": "[2.16.6, )"
+            },
             "Microsoft.Extensions.Logging.Console": {
               "target": "Package",
               "version": "[8.0.0, )"
@@ -63,10 +71,24 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "Uno.Microsoft.Xaml.Behaviors.WinUI.Managed": {
+              "target": "Package",
+              "version": "[2.0.5, )"
+            },
             "Uno.WinUI": {
               "include": "Runtime, Compile, Build, Native, ContentFiles, BuildTransitive",
               "target": "Package",
-              "version": "[5.0.0, )"
+              "version": "[5.0.19, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.6.2, )"
+            },
+            "xunit.runner.visualstudio": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.5.4, )"
             }
           },
           "imports": [
@@ -104,6 +126,14 @@
               "target": "Package",
               "version": "[8.2.2, )"
             },
+            "FsCheck": {
+              "target": "Package",
+              "version": "[2.16.6, )"
+            },
+            "FsCheck.Xunit": {
+              "target": "Package",
+              "version": "[2.16.6, )"
+            },
             "Microsoft.Extensions.Logging.Console": {
               "target": "Package",
               "version": "[8.0.0, )"
@@ -112,10 +142,24 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "Uno.Microsoft.Xaml.Behaviors.WinUI.Managed": {
+              "target": "Package",
+              "version": "[2.0.5, )"
+            },
             "Uno.WinUI": {
               "include": "Runtime, Compile, Build, Native, ContentFiles, BuildTransitive",
               "target": "Package",
-              "version": "[5.0.0, )"
+              "version": "[5.0.19, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.6.2, )"
+            },
+            "xunit.runner.visualstudio": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.5.4, )"
             }
           },
           "imports": [

@@ -26,6 +26,10 @@ public class VoiceActiveActivity : Activity
     private string _transcription = "";
     private string _currentState = "LISTENING";
     
+    // Speech recognizer without dialog
+    private SpeechRecognizer? _speechRecognizer;
+    private Intent? _recognizerIntent;
+    
     // Animation handlers
     private Android.OS.Handler? _animationHandler;
     private Java.Lang.Runnable? _orbPulseRunnable;
@@ -39,7 +43,7 @@ public class VoiceActiveActivity : Activity
         
         if (Build.VERSION.SdkInt >= BuildVersionCodes.Lollipop)
         {
-            Window?.SetStatusBarColor(Android.Graphics.Color.ParseColor("#0A1628"));
+            Window?.SetStatusBarColor(Android.Graphics.Color.ParseColor("#101622"));
         }
         
         // Initialize animation handler
@@ -53,6 +57,14 @@ public class VoiceActiveActivity : Activity
     protected override void OnDestroy()
     {
         StopAnimations();
+        
+        // Clean up speech recognizer
+        if (_speechRecognizer != null)
+        {
+            _speechRecognizer.Destroy();
+            _speechRecognizer = null;
+        }
+        
         base.OnDestroy();
     }
     
@@ -228,8 +240,8 @@ public class VoiceActiveActivity : Activity
         var gradientDrawable = new GradientDrawable(
             GradientDrawable.Orientation.TopBottom,
             new int[] {
-                Android.Graphics.Color.ParseColor("#0A1628"),
-                Android.Graphics.Color.ParseColor("#1E3A5F")
+                Android.Graphics.Color.ParseColor("#101622"),
+                Android.Graphics.Color.ParseColor("#1A8B5CF6")
             });
         mainLayout.Background = gradientDrawable;
         
@@ -270,7 +282,7 @@ public class VoiceActiveActivity : Activity
         };
         var ring1Drawable = new GradientDrawable();
         ring1Drawable.SetShape(ShapeType.Oval);
-        ring1Drawable.SetStroke(4, Android.Graphics.Color.ParseColor("#3B82F6"));
+        ring1Drawable.SetStroke(4, Android.Graphics.Color.ParseColor("#8B5CF6"));
         ring1Drawable.SetColor(Android.Graphics.Color.Transparent);
         _outerRing1.Background = ring1Drawable;
         _outerRing1.Alpha = 0.3f;
@@ -288,7 +300,7 @@ public class VoiceActiveActivity : Activity
         };
         var ring2Drawable = new GradientDrawable();
         ring2Drawable.SetShape(ShapeType.Oval);
-        ring2Drawable.SetStroke(4, Android.Graphics.Color.ParseColor("#3B82F6"));
+        ring2Drawable.SetStroke(4, Android.Graphics.Color.ParseColor("#8B5CF6"));
         ring2Drawable.SetColor(Android.Graphics.Color.Transparent);
         _outerRing2.Background = ring2Drawable;
         _outerRing2.Alpha = 0.5f;
@@ -312,7 +324,7 @@ public class VoiceActiveActivity : Activity
         var orbDrawable = new GradientDrawable();
         orbDrawable.SetShape(ShapeType.Oval);
         var orbColors = new int[] {
-            Android.Graphics.Color.ParseColor("#3B82F6"),
+            Android.Graphics.Color.ParseColor("#8B5CF6"),
             Android.Graphics.Color.ParseColor("#8B5CF6")
         };
         orbDrawable.SetColors(orbColors);
@@ -333,7 +345,7 @@ public class VoiceActiveActivity : Activity
                 TopMargin = 64
             }
         };
-        _waveformText.SetTextColor(Android.Graphics.Color.ParseColor("#3B82F6"));
+        _waveformText.SetTextColor(Android.Graphics.Color.ParseColor("#8B5CF6"));
         centerLayout.AddView(_waveformText);
         
         // Transcription text
@@ -431,7 +443,7 @@ public class VoiceActiveActivity : Activity
             Visibility = ViewStates.Gone
         };
         var tryAgainDrawable = new GradientDrawable();
-        tryAgainDrawable.SetColor(Android.Graphics.Color.ParseColor("#3B82F6"));
+        tryAgainDrawable.SetColor(Android.Graphics.Color.ParseColor("#8B5CF6"));
         tryAgainDrawable.SetCornerRadius(60);
         _tryAgainButton.Background = tryAgainDrawable;
         _tryAgainButton.SetTextColor(Android.Graphics.Color.White);
@@ -495,7 +507,7 @@ public class VoiceActiveActivity : Activity
         };
         var dotDrawable = new GradientDrawable();
         dotDrawable.SetShape(ShapeType.Oval);
-        dotDrawable.SetColor(Android.Graphics.Color.ParseColor("#3B82F6"));
+        dotDrawable.SetColor(Android.Graphics.Color.ParseColor("#8B5CF6"));
         statusDot.Background = dotDrawable;
         statusContainer.AddView(statusDot);
         
@@ -504,7 +516,7 @@ public class VoiceActiveActivity : Activity
             Text = "● LISTENING",
             TextSize = 14
         };
-        _statusText.SetTextColor(Android.Graphics.Color.ParseColor("#3B82F6"));
+        _statusText.SetTextColor(Android.Graphics.Color.ParseColor("#8B5CF6"));
         _statusText.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
         statusContainer.AddView(_statusText);
         
@@ -528,45 +540,151 @@ public class VoiceActiveActivity : Activity
     
     private void StartVoiceRecognition()
     {
-        var intent = new Intent(RecognizerIntent.ActionRecognizeSpeech);
-        intent.PutExtra(RecognizerIntent.ExtraLanguageModel, RecognizerIntent.LanguageModelFreeForm);
-        intent.PutExtra(RecognizerIntent.ExtraLanguage, Java.Util.Locale.Default);
-        intent.PutExtra(RecognizerIntent.ExtraPrompt, "Speak now...");
+        // Create speech recognizer without dialog
+        _speechRecognizer = SpeechRecognizer.CreateSpeechRecognizer(this);
         
-        try
-        {
-            StartActivityForResult(intent, VOICE_RECOGNITION_REQUEST_CODE);
-        }
-        catch (System.Exception ex)
+        if (_speechRecognizer == null)
         {
             Toast.MakeText(this, "Voice recognition not available", ToastLength.Short)?.Show();
             Finish();
+            return;
+        }
+        
+        // Set up recognition listener
+        _speechRecognizer.SetRecognitionListener(new VoiceRecognitionListener(this));
+        
+        // Create intent for recognition
+        _recognizerIntent = new Intent(RecognizerIntent.ActionRecognizeSpeech);
+        _recognizerIntent.PutExtra(RecognizerIntent.ExtraLanguageModel, RecognizerIntent.LanguageModelFreeForm);
+        _recognizerIntent.PutExtra(RecognizerIntent.ExtraLanguage, Java.Util.Locale.Default);
+        _recognizerIntent.PutExtra(RecognizerIntent.ExtraMaxResults, 1);
+        _recognizerIntent.PutExtra(RecognizerIntent.ExtraPartialResults, true);
+        
+        // Start listening (no dialog will appear)
+        _speechRecognizer.StartListening(_recognizerIntent);
+    }
+    
+    // Recognition listener class
+    private class VoiceRecognitionListener : Java.Lang.Object, IRecognitionListener
+    {
+        private readonly VoiceActiveActivity _activity;
+        
+        public VoiceRecognitionListener(VoiceActiveActivity activity)
+        {
+            _activity = activity;
+        }
+        
+        public void OnBeginningOfSpeech()
+        {
+            _activity.RunOnUiThread(() =>
+            {
+                if (_activity._statusText != null)
+                    _activity._statusText.Text = "Listening...";
+            });
+        }
+        
+        public void OnBufferReceived(byte[]? buffer) { }
+        
+        public void OnEndOfSpeech()
+        {
+            _activity.RunOnUiThread(() =>
+            {
+                if (_activity._statusText != null)
+                    _activity._statusText.Text = "Processing...";
+            });
+        }
+        
+        public void OnError(SpeechRecognizerError error)
+        {
+            _activity.RunOnUiThread(() =>
+            {
+                string errorMessage = error switch
+                {
+                    SpeechRecognizerError.NoMatch => "No speech detected. Please try again.",
+                    SpeechRecognizerError.Network => "Network error. Please check your connection.",
+                    SpeechRecognizerError.Audio => "Audio recording error.",
+                    SpeechRecognizerError.Client => "Recognition cancelled.",
+                    _ => "Recognition error. Please try again."
+                };
+                
+                if (_activity._statusText != null)
+                    _activity._statusText.Text = errorMessage;
+                
+                // Show try again button
+                _activity.ShowTryAgainButton();
+            });
+        }
+        
+        public void OnEvent(int eventType, Bundle? @params) { }
+        
+        public void OnPartialResults(Bundle? partialResults)
+        {
+            if (partialResults == null) return;
+            
+            var matches = partialResults.GetStringArrayList(SpeechRecognizer.ResultsRecognition);
+            if (matches != null && matches.Count > 0)
+            {
+                _activity.RunOnUiThread(() =>
+                {
+                    if (_activity._transcriptionText != null)
+                        _activity._transcriptionText.Text = matches[0];
+                });
+            }
+        }
+        
+        public void OnReadyForSpeech(Bundle? @params)
+        {
+            _activity.RunOnUiThread(() =>
+            {
+                if (_activity._statusText != null)
+                    _activity._statusText.Text = "Speak now...";
+            });
+        }
+        
+        public void OnResults(Bundle? results)
+        {
+            if (results == null) return;
+            
+            var matches = results.GetStringArrayList(SpeechRecognizer.ResultsRecognition);
+            if (matches != null && matches.Count > 0)
+            {
+                _activity._transcription = matches[0] ?? "";
+                _activity.RunOnUiThread(() =>
+                {
+                    _activity.OnRecognitionComplete(_activity._transcription);
+                });
+            }
+        }
+        
+        public void OnRmsChanged(float rmsdB)
+        {
+            // Update waveform based on audio level
+            _activity.RunOnUiThread(() =>
+            {
+                _activity.UpdateWaveformFromRms(rmsdB);
+            });
         }
     }
     
-    protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
+    private void UpdateWaveformFromRms(float rmsdB)
     {
-        base.OnActivityResult(requestCode, resultCode, data);
+        // Convert RMS to visual representation
+        int bars = (int)((rmsdB + 2) / 2); // Normalize to 0-10 range
+        bars = Math.Max(0, Math.Min(10, bars));
         
-        if (requestCode == VOICE_RECOGNITION_REQUEST_CODE)
+        string waveform = new string('|', bars) + new string('.', 10 - bars);
+        
+        if (_waveformText != null)
+            _waveformText.Text = waveform;
+    }
+    
+    private void ShowTryAgainButton()
+    {
+        if (_buttonContainer != null && _tryAgainButton != null)
         {
-            if (resultCode == Result.Ok && data != null)
-            {
-                var matches = data.GetStringArrayListExtra(RecognizerIntent.ExtraResults);
-                if (matches != null && matches.Count > 0)
-                {
-                    _transcription = matches[0] ?? "";
-                    OnRecognitionComplete(_transcription);
-                }
-                else
-                {
-                    OnRecognitionFailed();
-                }
-            }
-            else
-            {
-                OnRecognitionFailed();
-            }
+            _buttonContainer.Visibility = ViewStates.Visible;
+            _tryAgainButton.Visibility = ViewStates.Visible;
+            _sendButton!.Visibility = ViewStates.Gone;
         }
     }
     
@@ -735,7 +853,7 @@ public class VoiceActiveActivity : Activity
         if (_statusText != null)
         {
             _statusText.Text = "● LISTENING";
-            _statusText.SetTextColor(Android.Graphics.Color.ParseColor("#3B82F6"));
+            _statusText.SetTextColor(Android.Graphics.Color.ParseColor("#8B5CF6"));
         }
         
         if (_transcriptionText != null)
@@ -749,7 +867,7 @@ public class VoiceActiveActivity : Activity
             var orbDrawable = new GradientDrawable();
             orbDrawable.SetShape(ShapeType.Oval);
             var orbColors = new int[] {
-                Android.Graphics.Color.ParseColor("#3B82F6"),
+                Android.Graphics.Color.ParseColor("#8B5CF6"),
                 Android.Graphics.Color.ParseColor("#8B5CF6")
             };
             orbDrawable.SetColors(orbColors);

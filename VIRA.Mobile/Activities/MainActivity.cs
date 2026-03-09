@@ -6,11 +6,12 @@ using Android.Views;
 using Android.Widget;
 using Android.Graphics.Drawables;
 using Microsoft.Extensions.DependencyInjection;
-using VIRA.Shared.Services;
-using VIRA.Shared.ViewModels;
-using VIRA.Shared.Models;
+using VIRA.Mobile.SharedServices;
+using VIRA.Mobile.ViewModels;
+using VIRA.Mobile.SharedModels;
 using VIRA.Mobile.Utils;
 using VIRA.Mobile.Models;
+using VIRA.Mobile.Views;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +33,6 @@ public class MainActivity : Activity
     private Button? _sendButton;
     private Button? _voiceButton;
     private Button? _plusButton;
-    private Button? _voiceToggleButton;
     private TextView? _greetingText;
     private TextView? _statusText;
     private HorizontalScrollView? _quickActionsScroll;
@@ -42,14 +42,30 @@ public class MainActivity : Activity
     private bool _isTyping = false;
     private bool _voiceOutputEnabled = true;
     
-    private List<QuickAction> _quickActions = new()
+    // Theme colors
+    private string _bgPrimary = "#101622";
+    private string _bgSecondary = "#1E293B";
+    private string _bgCard = "#0DFFFFFF";
+    private string _borderColor = "#1AFFFFFF";
+    private string _textPrimary = "#FFFFFF";
+    private string _textSecondary = "#94A3B8";
+    private string _textTertiary = "#64748B";
+    private string _statusBarColor = "#0A1628";
+    
+    // Sidebar and conversation management
+    private ChatHistorySidebar? _sidebar;
+    private ConversationManager? _conversationManager;
+    private ConversationStorageService? _storageService;
+    private FrameLayout? _rootLayout;
+    
+    private List<VIRA.Mobile.Models.QuickAction> _quickActions = new()
     {
-        new QuickAction("☀️", "Weather", "weather"),
-        new QuickAction("📰", "News", "news"),
-        new QuickAction("🔔", "Reminders", "reminder"),
-        new QuickAction("🚗", "Traffic", "traffic"),
-        new QuickAction("☕", "Coffee", "coffee"),
-        new QuickAction("🎵", "Music", "music")
+        new VIRA.Mobile.Models.QuickAction("☀️", "Weather", "weather"),
+        new VIRA.Mobile.Models.QuickAction("📰", "News", "news"),
+        new VIRA.Mobile.Models.QuickAction("🔔", "Reminders", "reminder"),
+        new VIRA.Mobile.Models.QuickAction("🚗", "Traffic", "traffic"),
+        new VIRA.Mobile.Models.QuickAction("☕", "Coffee", "coffee"),
+        new VIRA.Mobile.Models.QuickAction("🎵", "Music", "music")
     };
     
     protected override void OnResume()
@@ -57,12 +73,123 @@ public class MainActivity : Activity
         base.OnResume();
         
         Android.Util.Log.Info(TAG, "========================================");
-        Android.Util.Log.Info(TAG, "OnResume - Reloading API Key");
+        Android.Util.Log.Info(TAG, "OnResume - Reloading API Key and Theme");
         Android.Util.Log.Info(TAG, "========================================");
+        
+        // Reload theme colors
+        LoadThemeColors();
         
         // Reload API key when returning from Settings
         // This ensures new API key is always loaded
         ReloadApiKey();
+        
+        // Rebuild UI to apply theme changes
+        if (_rootLayout != null)
+        {
+            _rootLayout.RemoveAllViews();
+            BuildUI();
+            
+            // Reload current conversation messages after UI rebuild
+            var currentConversation = _conversationManager?.GetCurrentConversation();
+            if (currentConversation != null && currentConversation.Messages.Count > 0)
+            {
+                Android.Util.Log.Info(TAG, $"🔄 Reloading {currentConversation.Messages.Count} messages from current conversation");
+                
+                // Display all messages from current conversation
+                foreach (var msg in currentConversation.Messages)
+                {
+                    if (msg.Role == ChatMessageRole.User)
+                    {
+                        AddUserMessage(msg.Content);
+                    }
+                    else
+                    {
+                        AddBotMessage(msg.Content);
+                    }
+                }
+                
+                ScrollToBottom();
+                Android.Util.Log.Info(TAG, "✅ Messages reloaded successfully");
+            }
+            else
+            {
+                // No messages - show welcome message
+                Android.Util.Log.Info(TAG, "📝 No messages in conversation - showing welcome message");
+                AddBotMessage($"{TimeGreeting.GetGreetingEmoji()} {TimeGreeting.GetGreeting()}! Saya Vira, asisten AI pribadi Anda. Ada yang bisa saya bantu?");
+            }
+        }
+    }
+    
+    private void LoadThemeColors()
+    {
+        var prefs = GetSharedPreferences("vira_settings", FileCreationMode.Private);
+        var theme = prefs?.GetString("theme_preference", "dark") ?? "dark";
+        
+        Android.Util.Log.Info(TAG, $"🎨 Loading theme: {theme}");
+        
+        if (theme == "light")
+        {
+            // Light theme colors
+            _bgPrimary = "#F8FAFC";
+            _bgSecondary = "#E2E8F0";
+            _bgCard = "#FFFFFF";
+            _borderColor = "#CBD5E1";
+            _textPrimary = "#0F172A";
+            _textSecondary = "#475569";
+            _textTertiary = "#94A3B8";
+            _statusBarColor = "#E2E8F0";
+            
+            Android.Util.Log.Info(TAG, "✅ Light theme colors loaded");
+        }
+        else if (theme == "system")
+        {
+            // Check system theme
+            var uiMode = Resources?.Configuration?.UiMode;
+            var isSystemDark = (uiMode & Android.Content.Res.UiMode.NightMask) == Android.Content.Res.UiMode.NightYes;
+            
+            if (isSystemDark)
+            {
+                // Dark theme colors (default)
+                _bgPrimary = "#101622";
+                _bgSecondary = "#1E293B";
+                _bgCard = "#0DFFFFFF";
+                _borderColor = "#1AFFFFFF";
+                _textPrimary = "#FFFFFF";
+                _textSecondary = "#94A3B8";
+                _textTertiary = "#64748B";
+                _statusBarColor = "#0A1628";
+                
+                Android.Util.Log.Info(TAG, "✅ System theme (dark) colors loaded");
+            }
+            else
+            {
+                // Light theme colors
+                _bgPrimary = "#F8FAFC";
+                _bgSecondary = "#E2E8F0";
+                _bgCard = "#FFFFFF";
+                _borderColor = "#CBD5E1";
+                _textPrimary = "#0F172A";
+                _textSecondary = "#475569";
+                _textTertiary = "#94A3B8";
+                _statusBarColor = "#E2E8F0";
+                
+                Android.Util.Log.Info(TAG, "✅ System theme (light) colors loaded");
+            }
+        }
+        else
+        {
+            // Dark theme colors (default)
+            _bgPrimary = "#101622";
+            _bgSecondary = "#1E293B";
+            _bgCard = "#0DFFFFFF";
+            _borderColor = "#1AFFFFFF";
+            _textPrimary = "#FFFFFF";
+            _textSecondary = "#94A3B8";
+            _textTertiary = "#64748B";
+            _statusBarColor = "#0A1628";
+            
+            Android.Util.Log.Info(TAG, "✅ Dark theme colors loaded");
+        }
     }
     
     protected override void OnPause()
@@ -86,6 +213,10 @@ public class MainActivity : Activity
             {
                 apiKey = prefs?.GetString("groq_api_key", null);
             }
+            else if (provider == "openai")
+            {
+                apiKey = prefs?.GetString("openai_api_key", null);
+            }
             else
             {
                 apiKey = prefs?.GetString("gemini_api_key", null);
@@ -104,6 +235,11 @@ public class MainActivity : Activity
                 {
                     Android.Util.Log.Info(TAG, "🚀 Using Groq API (Llama 3.3 70B)");
                     chatService = new GroqChatbotService(httpClient);
+                }
+                else if (provider == "openai")
+                {
+                    Android.Util.Log.Info(TAG, "🤖 Using OpenAI API (gpt-4o-mini)");
+                    chatService = new OpenAIChatbotService(httpClient);
                 }
                 else
                 {
@@ -126,7 +262,8 @@ public class MainActivity : Activity
                     _androidVoiceService = new Services.AndroidVoiceService();
                 }
                 
-                _viewModel = new MainChatViewModel(chatService, _androidVoiceService);
+                var messageProcessor = CreateMessageProcessor(chatService);
+                _viewModel = new MainChatViewModel(messageProcessor, chatService, _androidVoiceService, null);
                 
                 Android.Util.Log.Info(TAG, $"✅ ViewModel recreated with {provider} provider");
                 
@@ -193,6 +330,10 @@ public class MainActivity : Activity
             {
                 apiKey = prefs?.GetString("groq_api_key", null);
             }
+            else if (provider == "openai")
+            {
+                apiKey = prefs?.GetString("openai_api_key", null);
+            }
             else
             {
                 apiKey = prefs?.GetString("gemini_api_key", null);
@@ -205,6 +346,11 @@ public class MainActivity : Activity
             {
                 Android.Util.Log.Info(TAG, "🚀 Using Groq API (Llama 3.3 70B)");
                 chatService = new GroqChatbotService(httpClient);
+            }
+            else if (provider == "openai")
+            {
+                Android.Util.Log.Info(TAG, "🤖 Using OpenAI API (gpt-4o-mini)");
+                chatService = new OpenAIChatbotService(httpClient);
             }
             else
             {
@@ -232,30 +378,25 @@ public class MainActivity : Activity
             // Load ElevenLabs API key
             var elevenLabsKey = prefs?.GetString("elevenlabs_api_key", null);
             
-            // If no API key in preferences, use default key
-            if (string.IsNullOrEmpty(elevenLabsKey))
-            {
-                elevenLabsKey = "sk_308603cc4ce21513cd1e4c289efdf31ed1a0a415ded08e31";
-                Android.Util.Log.Info(TAG, "Using default ElevenLabs API Key");
-                
-                // Save to preferences for future use
-                var editor = prefs?.Edit();
-                editor?.PutString("elevenlabs_api_key", elevenLabsKey);
-                editor?.Commit();
-            }
-            
             if (!string.IsNullOrEmpty(elevenLabsKey))
             {
                 _ttsService.SetApiKey(elevenLabsKey);
                 Android.Util.Log.Info(TAG, $"✅ ElevenLabs API Key loaded (length: {elevenLabsKey.Length})");
+                
+                // Load and set Voice ID
+                var voiceId = prefs?.GetString("elevenlabs_voice_id", "21m00Tcm4TlvDq8ikWAM");
+                _ttsService.SetVoiceId(voiceId);
+                Android.Util.Log.Info(TAG, $"✅ ElevenLabs Voice ID set: {voiceId}");
             }
             else
             {
                 Android.Util.Log.Warn(TAG, "⚠️ No ElevenLabs API Key found - voice output disabled");
+                Android.Util.Log.Info(TAG, "💡 User needs to add ElevenLabs API key in Settings for voice output");
             }
             
             Android.Util.Log.Info(TAG, "Step 6: Creating ViewModel...");
-            _viewModel = new MainChatViewModel(chatService, _androidVoiceService);
+            var messageProcessor = CreateMessageProcessor(chatService);
+            _viewModel = new MainChatViewModel(messageProcessor, chatService, _androidVoiceService, null);
             
             Android.Util.Log.Info(TAG, $"✅ ViewModel initialized successfully with {provider} provider");
         }
@@ -263,6 +404,53 @@ public class MainActivity : Activity
         {
             Android.Util.Log.Error(TAG, $"❌ Error initializing ViewModel: {ex.Message}");
             Android.Util.Log.Error(TAG, $"Stack trace: {ex.StackTrace}");
+        }
+        
+        // Initialize conversation management
+        Android.Util.Log.Info(TAG, "Step 7: Initializing conversation management...");
+        _storageService = new ConversationStorageService(this);
+        _conversationManager = new ConversationManager(_storageService, this);
+        
+        // Step 8: Run migration if needed
+        Android.Util.Log.Info(TAG, "Step 8: Checking for migration...");
+        var migrationManager = new MigrationManager(this, _storageService);
+        
+        // Check if onboarding should be shown
+        if (migrationManager.ShouldShowOnboarding())
+        {
+            Android.Util.Log.Info(TAG, "🎉 First launch - showing onboarding");
+            var onboardingIntent = new Intent(this, typeof(OnboardingActivity));
+            StartActivity(onboardingIntent);
+        }
+        
+        if (migrationManager.IsFirstLaunch())
+        {
+            Android.Util.Log.Info(TAG, "🎉 First launch detected - running migration");
+            migrationManager.PerformMigration();
+        }
+        else if (migrationManager.NeedsMigration())
+        {
+            Android.Util.Log.Info(TAG, $"🔄 Version change detected - running migration from {migrationManager.GetSavedVersion()} to {migrationManager.GetCurrentVersion()}");
+            migrationManager.PerformMigration();
+        }
+        else
+        {
+            Android.Util.Log.Info(TAG, $"✅ No migration needed - version {migrationManager.GetCurrentVersion()}");
+        }
+        
+        // Load existing conversations (after migration)
+        _conversationManager.LoadAllConversations();
+        
+        // Create or load default conversation
+        var currentConversation = _conversationManager.GetCurrentConversation();
+        if (currentConversation == null)
+        {
+            _conversationManager.CreateNewConversation();
+            Android.Util.Log.Info(TAG, "✅ Created new default conversation");
+        }
+        else
+        {
+            Android.Util.Log.Info(TAG, $"✅ Loaded existing conversation: {currentConversation.Id}");
         }
         
         // Request permissions
@@ -274,16 +462,13 @@ public class MainActivity : Activity
             }, 1);
         }
 
-        // Set status bar color
+        // Set status bar color based on theme
         if (Build.VERSION.SdkInt >= BuildVersionCodes.Lollipop)
         {
-            Window?.SetStatusBarColor(Android.Graphics.Color.ParseColor("#0A1628"));
+            Window?.SetStatusBarColor(Android.Graphics.Color.ParseColor(_statusBarColor));
         }
         
         BuildUI();
-        
-        // Update voice toggle button appearance
-        UpdateVoiceToggleButton();
         
         // Add welcome message only on first launch
         AddBotMessage($"{TimeGreeting.GetGreetingEmoji()} {TimeGreeting.GetGreeting()}! Saya Vira, asisten AI pribadi Anda. Ada yang bisa saya bantu?");
@@ -295,6 +480,14 @@ public class MainActivity : Activity
     {
         try
         {
+            // Root layout - FrameLayout to hold main UI and sidebar overlay
+            _rootLayout = new FrameLayout(this)
+            {
+                LayoutParameters = new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MatchParent,
+                    ViewGroup.LayoutParams.MatchParent)
+            };
+            
             // Main layout
             var mainLayout = new LinearLayout(this)
             {
@@ -303,7 +496,7 @@ public class MainActivity : Activity
                     ViewGroup.LayoutParams.MatchParent,
                     ViewGroup.LayoutParams.MatchParent)
             };
-            mainLayout.SetBackgroundColor(Android.Graphics.Color.ParseColor("#0A1628"));
+            mainLayout.SetBackgroundColor(Android.Graphics.Color.ParseColor(_bgPrimary));
             
             // Header
             var header = CreateHeader();
@@ -340,7 +533,19 @@ public class MainActivity : Activity
             var inputLayout = CreateInputArea();
             mainLayout.AddView(inputLayout);
             
-            SetContentView(mainLayout);
+            // Add main layout to root
+            _rootLayout.AddView(mainLayout);
+            
+            // Initialize and add sidebar
+            if (_conversationManager != null)
+            {
+                _sidebar = new ChatHistorySidebar(this, _conversationManager);
+                _sidebar.SetListener(new SidebarListener(this));
+                _rootLayout.AddView(_sidebar);
+                Android.Util.Log.Info(TAG, "✅ Sidebar initialized and added to layout");
+            }
+            
+            SetContentView(_rootLayout);
         }
         catch (System.Exception ex)
         {
@@ -359,10 +564,9 @@ public class MainActivity : Activity
         };
         
         var headerDrawable = new GradientDrawable();
-        headerDrawable.SetColor(Android.Graphics.Color.ParseColor("#1A2942"));
-        headerDrawable.SetCornerRadii(new float[] { 0, 0, 0, 0, 48, 48, 48, 48 });
+        headerDrawable.SetColor(Android.Graphics.Color.ParseColor(_bgSecondary));
         header.Background = headerDrawable;
-        header.SetPadding(32, 48, 32, 32);
+        header.SetPadding(24, 16, 24, 24); // Reduced top padding from 48 to 16
         
         // Top row with menu and settings
         var topRow = new LinearLayout(this)
@@ -374,17 +578,18 @@ public class MainActivity : Activity
         };
         topRow.SetGravity(GravityFlags.CenterVertical);
         
-        // Menu button
+        // Menu button - smaller size
         var menuButton = new Button(this)
         {
             Text = "≡",
             LayoutParameters = new LinearLayout.LayoutParams(
-                100,
-                100)
+                80,  // Reduced from 100
+                80)  // Reduced from 100
         };
         menuButton.SetBackgroundColor(Android.Graphics.Color.Transparent);
-        menuButton.SetTextColor(Android.Graphics.Color.White);
-        menuButton.TextSize = 28;
+        menuButton.SetTextColor(Android.Graphics.Color.ParseColor(_textSecondary));
+        menuButton.TextSize = 24; // Reduced from 28
+        menuButton.SetPadding(0, 0, 0, 0);
         menuButton.Click += OnMenuClick;
         topRow.AddView(menuButton);
         
@@ -395,17 +600,18 @@ public class MainActivity : Activity
         };
         topRow.AddView(spacer);
         
-        // Settings button
+        // Settings button - smaller size
         var settingsButton = new Button(this)
         {
             Text = "⚙",
             LayoutParameters = new LinearLayout.LayoutParams(
-                100,
-                100)
+                80,  // Reduced from 100
+                80)  // Reduced from 100
         };
         settingsButton.SetBackgroundColor(Android.Graphics.Color.Transparent);
-        settingsButton.SetTextColor(Android.Graphics.Color.White);
-        settingsButton.TextSize = 24;
+        settingsButton.SetTextColor(Android.Graphics.Color.ParseColor(_textSecondary));
+        settingsButton.TextSize = 20; // Reduced from 24
+        settingsButton.SetPadding(0, 0, 0, 0);
         settingsButton.Click += OnSettingsClick;
         topRow.AddView(settingsButton);
         
@@ -415,19 +621,19 @@ public class MainActivity : Activity
         _greetingText = new TextView(this)
         {
             Text = TimeGreeting.GetGreeting(),
-            TextSize = 32,
+            TextSize = 28, // Slightly smaller
             LayoutParameters = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MatchParent,
                 ViewGroup.LayoutParams.WrapContent)
             {
-                TopMargin = 16
+                TopMargin = 12
             }
         };
-        _greetingText.SetTextColor(Android.Graphics.Color.White);
+        _greetingText.SetTextColor(Android.Graphics.Color.ParseColor(_textPrimary));
         _greetingText.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
         header.AddView(_greetingText);
         
-        // Status row
+        // Status row - simplified without voice toggle
         var statusRow = new LinearLayout(this)
         {
             Orientation = Orientation.Horizontal,
@@ -435,7 +641,7 @@ public class MainActivity : Activity
                 ViewGroup.LayoutParams.MatchParent,
                 ViewGroup.LayoutParams.WrapContent)
             {
-                TopMargin = 16
+                TopMargin = 12
             }
         };
         statusRow.SetGravity(GravityFlags.CenterVertical);
@@ -443,9 +649,9 @@ public class MainActivity : Activity
         // Status indicator (purple dot)
         var statusDot = new View(this)
         {
-            LayoutParameters = new LinearLayout.LayoutParams(16, 16)
+            LayoutParameters = new LinearLayout.LayoutParams(12, 12) // Slightly smaller
             {
-                RightMargin = 16
+                RightMargin = 12
             }
         };
         var dotDrawable = new GradientDrawable();
@@ -457,33 +663,13 @@ public class MainActivity : Activity
         _statusText = new TextView(this)
         {
             Text = "Vira AI",
-            TextSize = 14,
+            TextSize = 13,
             LayoutParameters = new LinearLayout.LayoutParams(
-                0,
+                ViewGroup.LayoutParams.WrapContent,
                 ViewGroup.LayoutParams.WrapContent)
-            {
-                Weight = 1
-            }
         };
-        _statusText.SetTextColor(Android.Graphics.Color.ParseColor("#94A3B8"));
+        _statusText.SetTextColor(Android.Graphics.Color.ParseColor(_textSecondary));
         statusRow.AddView(_statusText);
-        
-        // Voice toggle button
-        _voiceToggleButton = new Button(this)
-        {
-            Text = "🔊",
-            LayoutParameters = new LinearLayout.LayoutParams(
-                100,
-                100)
-        };
-        var voiceToggleDrawable = new GradientDrawable();
-        voiceToggleDrawable.SetColor(Android.Graphics.Color.ParseColor("#22C55E"));
-        voiceToggleDrawable.SetCornerRadius(50);
-        _voiceToggleButton.Background = voiceToggleDrawable;
-        _voiceToggleButton.SetTextColor(Android.Graphics.Color.White);
-        _voiceToggleButton.TextSize = 20;
-        _voiceToggleButton.Click += OnVoiceToggleClick;
-        statusRow.AddView(_voiceToggleButton);
         
         header.AddView(statusRow);
         
@@ -523,7 +709,7 @@ public class MainActivity : Activity
         return _quickActionsScroll;
     }
     
-    private Button CreateQuickActionChip(QuickAction action)
+    private Button CreateQuickActionChip(VIRA.Mobile.Models.QuickAction action)
     {
         var chip = new Button(this)
         {
@@ -537,11 +723,11 @@ public class MainActivity : Activity
         };
         
         var chipDrawable = new GradientDrawable();
-        chipDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
+        chipDrawable.SetColor(Android.Graphics.Color.ParseColor(_bgCard));
         chipDrawable.SetCornerRadius(60);
-        chipDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#334155"));
+        chipDrawable.SetStroke(2, Android.Graphics.Color.ParseColor(_borderColor));
         chip.Background = chipDrawable;
-        chip.SetTextColor(Android.Graphics.Color.White);
+        chip.SetTextColor(Android.Graphics.Color.ParseColor(_textPrimary));
         chip.TextSize = 14;
         chip.SetPadding(48, 24, 48, 24);
         chip.SetAllCaps(false);
@@ -559,8 +745,20 @@ public class MainActivity : Activity
             LayoutParameters = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MatchParent,
                 ViewGroup.LayoutParams.WrapContent)
+            {
+                BottomMargin = 32,
+                LeftMargin = 32,
+                RightMargin = 32
+            }
         };
-        inputLayout.SetPadding(32, 16, 32, 32);
+        
+        var inputContainerDrawable = new GradientDrawable();
+        inputContainerDrawable.SetColor(Android.Graphics.Color.ParseColor(_bgCard));
+        inputContainerDrawable.SetCornerRadius(96); // 32dp equivalent
+        inputContainerDrawable.SetStroke(2, Android.Graphics.Color.ParseColor(_borderColor));
+        inputLayout.Background = inputContainerDrawable;
+        
+        inputLayout.SetPadding(16, 16, 16, 16);
         inputLayout.SetGravity(GravityFlags.CenterVertical);
         
         // Plus button
@@ -572,10 +770,10 @@ public class MainActivity : Activity
                 120)
         };
         var plusDrawable = new GradientDrawable();
-        plusDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
+        plusDrawable.SetColor(Android.Graphics.Color.ParseColor(_bgCard));
         plusDrawable.SetCornerRadius(60);
         _plusButton.Background = plusDrawable;
-        _plusButton.SetTextColor(Android.Graphics.Color.ParseColor("#94A3B8"));
+        _plusButton.SetTextColor(Android.Graphics.Color.ParseColor(_textSecondary));
         _plusButton.TextSize = 28;
         _plusButton.Click += OnPlusClick;
         inputLayout.AddView(_plusButton);
@@ -594,11 +792,10 @@ public class MainActivity : Activity
             }
         };
         var inputDrawable = new GradientDrawable();
-        inputDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        inputDrawable.SetCornerRadius(60);
+        inputDrawable.SetColor(Android.Graphics.Color.Transparent);
         _inputBox.Background = inputDrawable;
-        _inputBox.SetTextColor(Android.Graphics.Color.White);
-        _inputBox.SetHintTextColor(Android.Graphics.Color.ParseColor("#64748B"));
+        _inputBox.SetTextColor(Android.Graphics.Color.ParseColor(_textPrimary));
+        _inputBox.SetHintTextColor(Android.Graphics.Color.ParseColor(_textTertiary));
         _inputBox.SetPadding(48, 0, 48, 0);
         _inputBox.Gravity = GravityFlags.CenterVertical;
         _inputBox.TextChanged += OnInputTextChanged;
@@ -616,10 +813,10 @@ public class MainActivity : Activity
             }
         };
         var voiceDrawable = new GradientDrawable();
-        voiceDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
+        voiceDrawable.SetColor(Android.Graphics.Color.ParseColor(_bgCard));
         voiceDrawable.SetCornerRadius(60);
         _voiceButton.Background = voiceDrawable;
-        _voiceButton.SetTextColor(Android.Graphics.Color.White);
+        _voiceButton.SetTextColor(Android.Graphics.Color.ParseColor(_textPrimary));
         _voiceButton.TextSize = 24;
         _voiceButton.Click += OnVoiceButtonClick;
         inputLayout.AddView(_voiceButton);
@@ -633,7 +830,8 @@ public class MainActivity : Activity
                 120)
         };
         var sendDrawable = new GradientDrawable();
-        sendDrawable.SetColor(Android.Graphics.Color.ParseColor("#3B82F6"));
+        sendDrawable.SetOrientation(GradientDrawable.Orientation.LeftRight);
+        sendDrawable.SetColors(new int[] { Android.Graphics.Color.ParseColor("#8B5CF6"), Android.Graphics.Color.ParseColor("#A855F7") });
         sendDrawable.SetCornerRadius(60);
         _sendButton.Background = sendDrawable;
         _sendButton.SetTextColor(Android.Graphics.Color.White);
@@ -747,8 +945,9 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor(_bgCard));
+        cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor(_borderColor));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         card.SetGravity(GravityFlags.Center);
@@ -758,7 +957,7 @@ public class MainActivity : Activity
             Text = "●  ●  ●",
             TextSize = 20
         };
-        typingText.SetTextColor(Android.Graphics.Color.ParseColor("#64748B"));
+        typingText.SetTextColor(Android.Graphics.Color.ParseColor(_textTertiary));
         
         card.AddView(typingText);
         container.AddView(card);
@@ -784,15 +983,15 @@ public class MainActivity : Activity
         var label = new TextView(this)
         {
             Text = isUser ? "You" : "Vira",
-            TextSize = 12,
+            TextSize = 11,
             LayoutParameters = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WrapContent,
                 ViewGroup.LayoutParams.WrapContent)
             {
-                BottomMargin = 12
+                BottomMargin = 4
             }
         };
-        label.SetTextColor(Android.Graphics.Color.ParseColor("#64748B"));
+        label.SetTextColor(Android.Graphics.Color.ParseColor(_textSecondary));
         cardContainer.AddView(label);
         
         var card = new LinearLayout(this)
@@ -804,12 +1003,21 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(isUser 
-            ? Android.Graphics.Color.ParseColor("#3B82F6") 
-            : Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        if (isUser)
+        {
+            cardDrawable.SetOrientation(GradientDrawable.Orientation.LeftRight);
+            cardDrawable.SetColors(new int[] { Android.Graphics.Color.ParseColor("#8B5CF6"), Android.Graphics.Color.ParseColor("#A855F7") });
+            cardDrawable.SetCornerRadii(new float[] { 48, 48, 48, 48, 4, 4, 48, 48 }); // rounded-t-2xl (16dp->~48px), rounded-br-[2px], rounded-bl-2xl
+        }
+        else
+        {
+            cardDrawable.SetColor(Android.Graphics.Color.ParseColor(_bgCard));
+            cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor(_borderColor));
+            cardDrawable.SetCornerRadii(new float[] { 48, 48, 48, 48, 48, 48, 4, 4 }); // rounded-t-2xl, rounded-br-2xl, rounded-bl-[2px]
+        }
+        
         card.Background = cardDrawable;
-        card.SetPadding(48, 32, 48, 32);
+        card.SetPadding(48, 36, 48, 36);
         
         var textView = new TextView(this)
         {
@@ -819,7 +1027,7 @@ public class MainActivity : Activity
                 ViewGroup.LayoutParams.WrapContent,
                 ViewGroup.LayoutParams.WrapContent)
         };
-        textView.SetTextColor(Android.Graphics.Color.White);
+        textView.SetTextColor(Android.Graphics.Color.ParseColor(_textPrimary));
         textView.SetMaxWidth(800);
         
         card.AddView(textView);
@@ -837,7 +1045,7 @@ public class MainActivity : Activity
                 TopMargin = 8
             }
         };
-        timeText.SetTextColor(Android.Graphics.Color.ParseColor("#475569"));
+        timeText.SetTextColor(Android.Graphics.Color.ParseColor(_textTertiary));
         cardContainer.AddView(timeText);
         
         return cardContainer;
@@ -858,6 +1066,16 @@ public class MainActivity : Activity
         
         // Add user message
         AddUserMessage(message);
+        
+        // Save user message to conversation
+        var userChatMessage = new ChatMessage
+        {
+            Content = message,
+            Role = ChatMessageRole.User,
+            Timestamp = DateTime.Now,
+            Type = MessageType.Text
+        };
+        _conversationManager?.AddMessageToCurrentConversation(userChatMessage);
         
         // Track question
         StatsTracker.IncrementQuestions(this);
@@ -892,10 +1110,10 @@ public class MainActivity : Activity
             _viewModel.InputText = message;
             Android.Util.Log.Info(TAG, $"✅ Set ViewModel.InputText = {message}");
             
-            // Send to Gemini API
-            Android.Util.Log.Info(TAG, "📡 Calling ViewModel.SendMessageCommand...");
-            await _viewModel.SendMessageCommand.ExecuteAsync(null);
-            Android.Util.Log.Info(TAG, "✅ SendMessageCommand completed");
+            // Send to API and wait for response
+            Android.Util.Log.Info(TAG, "📡 Calling ViewModel.SendMessageAsync...");
+            await _viewModel.SendMessageAsync();
+            Android.Util.Log.Info(TAG, "✅ SendMessageAsync completed");
             
             // Hide typing indicator
             HideTypingIndicator();
@@ -930,6 +1148,9 @@ public class MainActivity : Activity
                 
                 // Display the message with the correct content
                 AddBotMessageWithCard(lastMessage);
+                
+                // Save bot message to conversation
+                _conversationManager?.AddMessageToCurrentConversation(lastMessage);
                 
                 // Track conversation
                 StatsTracker.IncrementConversations(this);
@@ -1011,31 +1232,127 @@ public class MainActivity : Activity
                 return;
             }
             
-            // Check if TTS service and Android voice service are available
-            if (_ttsService == null || _androidVoiceService == null)
-            {
-                Android.Util.Log.Warn(TAG, "⚠️ TTS service not available");
-                Android.Util.Log.Info(TAG, "========================================");
-                return;
-            }
-            
-            Android.Util.Log.Info(TAG, "🎤 Synthesizing speech with ElevenLabs...");
-            
             // Clean text for speech (remove markdown, emojis, etc)
             var cleanText = CleanTextForSpeech(text);
             
             Android.Util.Log.Info(TAG, $"   Cleaned text length: {cleanText.Length}");
             Android.Util.Log.Info(TAG, $"   Cleaned text preview: {cleanText.Substring(0, Math.Min(100, cleanText.Length))}...");
             
-            // Synthesize speech
-            var audioData = await _ttsService.SynthesizeSpeechAsync(cleanText);
+            // Use Android native TTS with Indonesian female voice
+            Android.Util.Log.Info(TAG, "🎤 Using Android native TTS with Indonesian female voice...");
             
-            Android.Util.Log.Info(TAG, $"✅ Speech synthesized (size: {audioData.Length} bytes)");
+            try
+            {
+                // Create TTS with initialization listener
+                var ttsInitialized = false;
+                Android.Speech.Tts.TextToSpeech? ttsInstance = null;
+                
+                var tts = new Android.Speech.Tts.TextToSpeech(this, new TtsInitListener((status) =>
+                {
+                    if (status == Android.Speech.Tts.OperationResult.Success)
+                    {
+                        ttsInitialized = true;
+                        Android.Util.Log.Info(TAG, "✅ TTS initialized successfully");
+                    }
+                    else
+                    {
+                        Android.Util.Log.Error(TAG, $"❌ TTS initialization failed: {status}");
+                    }
+                }));
+                
+                ttsInstance = tts;
+                
+                // Wait for TTS to initialize
+                var maxWait = 20; // 2 seconds max
+                while (!ttsInitialized && maxWait > 0)
+                {
+                    await Task.Delay(100);
+                    maxWait--;
+                }
+                
+                if (!ttsInitialized)
+                {
+                    Android.Util.Log.Error(TAG, "❌ TTS initialization timeout");
+                    return;
+                }
+                
+                // Set Indonesian locale - FORCE Indonesian language
+                var indonesianLocale = new Java.Util.Locale("id", "ID");
+                
+                // Check if Indonesian is available
+                var localeResult = tts.IsLanguageAvailable(indonesianLocale);
+                Android.Util.Log.Info(TAG, $"🌐 Indonesian language availability: {localeResult}");
+                
+                if (localeResult == Android.Speech.Tts.LanguageAvailableResult.MissingData ||
+                    localeResult == Android.Speech.Tts.LanguageAvailableResult.NotSupported)
+                {
+                    // Indonesian not available - prompt user to install
+                    Android.Util.Log.Warn(TAG, "⚠️ Indonesian TTS not available - prompting user to install");
+                    
+                    RunOnUiThread(() =>
+                    {
+                        new AlertDialog.Builder(this)
+                            .SetTitle("Bahasa Indonesia Tidak Tersedia")
+                            .SetMessage("TTS bahasa Indonesia belum terinstall. Apakah Anda ingin menginstall sekarang?")
+                            .SetPositiveButton("Install", (s, e) =>
+                            {
+                                // Open TTS settings to install Indonesian
+                                var installIntent = new Intent();
+                                installIntent.SetAction(Android.Speech.Tts.TextToSpeech.Engine.ActionInstallTtsData);
+                                StartActivity(installIntent);
+                            })
+                            .SetNegativeButton("Nanti", (s, e) => { })
+                            .Show();
+                    });
+                    
+                    return;
+                }
+                
+                // Set Indonesian language
+                var setLangResult = tts.SetLanguage(indonesianLocale);
+                
+                if (setLangResult == Android.Speech.Tts.LanguageAvailableResult.Available ||
+                    setLangResult == Android.Speech.Tts.LanguageAvailableResult.CountryAvailable ||
+                    setLangResult == Android.Speech.Tts.LanguageAvailableResult.CountryVarAvailable)
+                {
+                    Android.Util.Log.Info(TAG, $"✅ Indonesian language set successfully: {setLangResult}");
+                }
+                else
+                {
+                    Android.Util.Log.Warn(TAG, $"⚠️ Failed to set Indonesian language: {setLangResult}");
+                }
+                
+                // Set pitch higher for female voice (1.0 = normal, 1.2 = slightly higher/feminine)
+                tts.SetPitch(1.2f);
+                Android.Util.Log.Info(TAG, "✅ Pitch set to 1.2 for female voice");
+                
+                // Set speech rate (0.9 = slightly slower for clarity in Indonesian)
+                tts.SetSpeechRate(0.9f);
+                Android.Util.Log.Info(TAG, "✅ Speech rate set to 0.9 for clarity");
+                
+                // Create speech parameters to force Indonesian
+                var speechParams = new Dictionary<string, string>();
+                speechParams[Android.Speech.Tts.TextToSpeech.Engine.KeyParamUtteranceId] = "vira_tts";
+                
+                // Speak the text with Indonesian language
+                var speakResult = tts.Speak(cleanText, Android.Speech.Tts.QueueMode.Flush, null, "vira_tts");
+                
+                if (speakResult == Android.Speech.Tts.OperationResult.Success)
+                {
+                    Android.Util.Log.Info(TAG, "✅ Android native TTS (Indonesian female voice) playback started");
+                    Android.Util.Log.Info(TAG, $"   Speaking in Indonesian: {cleanText.Substring(0, Math.Min(50, cleanText.Length))}...");
+                }
+                else
+                {
+                    Android.Util.Log.Error(TAG, $"❌ TTS speak failed: {speakResult}");
+                }
+            }
+            catch (Exception nativeTtsEx)
+            {
+                Android.Util.Log.Error(TAG, $"❌ Android native TTS failed: {nativeTtsEx.Message}");
+                Android.Util.Log.Error(TAG, $"   Stack trace: {nativeTtsEx.StackTrace}");
+            }
             
-            // Play audio
-            await _androidVoiceService.PlayAudioAsync(audioData);
-            
-            Android.Util.Log.Info(TAG, "✅ Speech playback completed");
             Android.Util.Log.Info(TAG, "========================================");
         }
         catch (Exception ex)
@@ -1043,6 +1360,22 @@ public class MainActivity : Activity
             Android.Util.Log.Error(TAG, $"❌ Error in TTS: {ex.Message}");
             Android.Util.Log.Info(TAG, "========================================");
             // Don't throw - TTS is optional, continue without voice
+        }
+    }
+    
+    // TTS initialization listener helper class
+    private class TtsInitListener : Java.Lang.Object, Android.Speech.Tts.TextToSpeech.IOnInitListener
+    {
+        private readonly Action<Android.Speech.Tts.OperationResult> _onInit;
+        
+        public TtsInitListener(Action<Android.Speech.Tts.OperationResult> onInit)
+        {
+            _onInit = onInit;
+        }
+        
+        public void OnInit(Android.Speech.Tts.OperationResult status)
+        {
+            _onInit?.Invoke(status);
         }
     }
     
@@ -1089,9 +1422,6 @@ public class MainActivity : Activity
         
         Android.Util.Log.Info(TAG, $"✅ Saved to preferences: voice_output_enabled = {_voiceOutputEnabled}");
         
-        // Update button appearance
-        UpdateVoiceToggleButton();
-        
         // Show toast
         var status = _voiceOutputEnabled ? "AKTIF 🔊" : "NONAKTIF 🔇";
         Toast.MakeText(this, $"Suara: {status}", ToastLength.Short)?.Show();
@@ -1100,33 +1430,6 @@ public class MainActivity : Activity
         Android.Util.Log.Info(TAG, "========================================");
     }
     
-    private void UpdateVoiceToggleButton()
-    {
-        if (_voiceToggleButton == null) return;
-        
-        Android.Util.Log.Info(TAG, $"🎨 Updating voice toggle button appearance - State: {_voiceOutputEnabled}");
-        
-        if (_voiceOutputEnabled)
-        {
-            // Voice ON - Green background, speaker icon
-            _voiceToggleButton.Text = "🔊";
-            var onDrawable = new GradientDrawable();
-            onDrawable.SetColor(Android.Graphics.Color.ParseColor("#22C55E")); // Green
-            onDrawable.SetCornerRadius(50);
-            _voiceToggleButton.Background = onDrawable;
-            Android.Util.Log.Info(TAG, "   ✅ Button set to GREEN (ON)");
-        }
-        else
-        {
-            // Voice OFF - Red background, muted icon
-            _voiceToggleButton.Text = "🔇";
-            var offDrawable = new GradientDrawable();
-            offDrawable.SetColor(Android.Graphics.Color.ParseColor("#EF4444")); // Red
-            offDrawable.SetCornerRadius(50);
-            _voiceToggleButton.Background = offDrawable;
-            Android.Util.Log.Info(TAG, "   ✅ Button set to RED (OFF)");
-        }
-    }
     
     private void OnQuickActionClick(string action)
     {
@@ -1170,7 +1473,12 @@ public class MainActivity : Activity
     
     private void OnMenuClick(object? sender, System.EventArgs e)
     {
-        OnPlusClick(sender, e);
+        // Toggle sidebar visibility
+        if (_sidebar != null)
+        {
+            _sidebar.Show();
+            Android.Util.Log.Info(TAG, "📂 Sidebar opened");
+        }
     }
     
     private void OnSettingsClick(object? sender, System.EventArgs e)
@@ -1224,8 +1532,8 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#0DFFFFFF")); cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#1AFFFFFF"));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         
@@ -1356,8 +1664,8 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#0DFFFFFF")); cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#1AFFFFFF"));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         
@@ -1467,8 +1775,8 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#0DFFFFFF")); cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#1AFFFFFF"));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         
@@ -1546,8 +1854,8 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#0DFFFFFF")); cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#1AFFFFFF"));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         
@@ -1645,8 +1953,8 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#0DFFFFFF")); cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#1AFFFFFF"));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         
@@ -1753,8 +2061,8 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#0DFFFFFF")); cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#1AFFFFFF"));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         
@@ -1871,8 +2179,8 @@ public class MainActivity : Activity
         };
         
         var cardDrawable = new GradientDrawable();
-        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#1E293B"));
-        cardDrawable.SetCornerRadius(32);
+        cardDrawable.SetColor(Android.Graphics.Color.ParseColor("#0DFFFFFF")); cardDrawable.SetStroke(2, Android.Graphics.Color.ParseColor("#1AFFFFFF"));
+        cardDrawable.SetCornerRadius(48);
         card.Background = cardDrawable;
         card.SetPadding(48, 32, 48, 32);
         
@@ -1984,5 +2292,136 @@ public class MainActivity : Activity
         cardContainer.AddView(label);
         
         return cardContainer;
+    }
+    
+    private HybridMessageProcessor CreateMessageProcessor(IGeminiService chatService)
+    {
+        // Create all required dependencies
+        var httpClient = new HttpClient();
+        var taskManager = new TaskManager();
+        var weatherService = new WeatherApiService(httpClient);
+        var newsService = new NewsApiService(httpClient);
+        var patternRegistry = new PatternRegistry(taskManager, weatherService, newsService);
+        var ruleProcessor = new RuleBasedProcessor(patternRegistry);
+        var prefsService = new PreferencesService();
+        
+        return new HybridMessageProcessor(ruleProcessor, chatService, chatService, chatService, prefsService);
+    }
+    
+    // Sidebar listener implementation
+    private class SidebarListener : Java.Lang.Object, ChatHistorySidebar.ISidebarListener
+    {
+        private readonly MainActivity _activity;
+        
+        public SidebarListener(MainActivity activity)
+        {
+            _activity = activity;
+        }
+        
+        public void OnConversationSelected(string conversationId)
+        {
+            Android.Util.Log.Info(TAG, $"📂 Conversation selected: {conversationId}");
+            _activity.LoadConversation(conversationId);
+        }
+        
+        public void OnNewChatRequested()
+        {
+            Android.Util.Log.Info(TAG, "📂 New chat requested");
+            _activity.CreateNewChat();
+        }
+        
+        public void OnClearHistoryRequested()
+        {
+            Android.Util.Log.Info(TAG, "📂 Clear history requested");
+            _activity.ShowClearHistoryConfirmation();
+        }
+    }
+    
+    private void LoadConversation(string conversationId)
+    {
+        try
+        {
+            var conversation = _conversationManager?.SwitchToConversation(conversationId);
+            if (conversation != null)
+            {
+                // Clear current chat display
+                _chatLayout?.RemoveAllViews();
+                
+                // Load and display messages from conversation
+                foreach (var msg in conversation.Messages)
+                {
+                    if (msg.Role == ChatMessageRole.User)
+                    {
+                        AddUserMessage(msg.Content);
+                    }
+                    else
+                    {
+                        AddBotMessage(msg.Content);
+                    }
+                }
+                
+                ScrollToBottom();
+                Android.Util.Log.Info(TAG, $"✅ Loaded conversation with {conversation.Messages.Count} messages");
+            }
+        }
+        catch (Exception ex)
+        {
+            Android.Util.Log.Error(TAG, $"❌ Error loading conversation: {ex.Message}");
+            Toast.MakeText(this, "Gagal memuat percakapan", ToastLength.Short)?.Show();
+        }
+    }
+    
+    private void CreateNewChat()
+    {
+        try
+        {
+            _conversationManager?.CreateNewConversation();
+            
+            // Clear current chat display
+            _chatLayout?.RemoveAllViews();
+            
+            // Add welcome message
+            AddBotMessage($"{TimeGreeting.GetGreetingEmoji()} {TimeGreeting.GetGreeting()}! Saya Vira, asisten AI pribadi Anda. Ada yang bisa saya bantu?");
+            
+            Android.Util.Log.Info(TAG, "✅ Created new chat");
+            Toast.MakeText(this, "Percakapan baru dibuat", ToastLength.Short)?.Show();
+        }
+        catch (Exception ex)
+        {
+            Android.Util.Log.Error(TAG, $"❌ Error creating new chat: {ex.Message}");
+        }
+    }
+    
+    private void ShowClearHistoryConfirmation()
+    {
+        new AlertDialog.Builder(this)
+            .SetTitle("Hapus Semua Riwayat")
+            .SetMessage("Apakah Anda yakin ingin menghapus semua riwayat percakapan? Tindakan ini tidak dapat dibatalkan.")
+            .SetPositiveButton("Hapus", (s, e) =>
+            {
+                try
+                {
+                    _conversationManager?.DeleteAllConversations();
+                    
+                    // Clear current chat display
+                    _chatLayout?.RemoveAllViews();
+                    
+                    // Create new conversation
+                    CreateNewChat();
+                    
+                    // Refresh sidebar
+                    _sidebar?.RefreshConversations();
+                    
+                    Android.Util.Log.Info(TAG, "✅ Cleared all conversation history");
+                    Toast.MakeText(this, "Semua riwayat dihapus", ToastLength.Short)?.Show();
+                }
+                catch (Exception ex)
+                {
+                    Android.Util.Log.Error(TAG, $"❌ Error clearing history: {ex.Message}");
+                    Toast.MakeText(this, "Gagal menghapus riwayat", ToastLength.Short)?.Show();
+                }
+            })
+            .SetNegativeButton("Batal", (s, e) => { })
+            .Show();
     }
 }

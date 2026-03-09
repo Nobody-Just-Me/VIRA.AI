@@ -1,0 +1,1 @@
+/home/fwwzfa/launch-vira-emulator.sh

@@ -1,6 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Condition=" '$(TargetFramework)' == '' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)xunit.core/2.6.2/buildMultiTargeting/xunit.core.targets" Condition="Exists('$(NuGetPackageRoot)xunit.core/2.6.2/buildMultiTargeting/xunit.core.targets')" />
+  </ImportGroup>
   <ImportGroup Condition=" '$(TargetFramework)' == 'net8.0' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.targets" Condition="Exists('$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.targets')" />
     <Import Project="$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net7.0/uno.winui.targets" Condition="Exists('$(NuGetPackageRoot)uno.winui/5.0.19/buildTransitive/net7.0/uno.winui.targets')" />
     <Import Project="$(NuGetPackageRoot)system.text.json/8.0.0/buildTransitive/net6.0/System.Text.Json.targets" Condition="Exists('$(NuGetPackageRoot)system.text.json/8.0.0/buildTransitive/net6.0/System.Text.Json.targets')" />
     <Import Project="$(NuGetPackageRoot)microsoft.extensions.options/8.0.0/buildTransitive/net6.0/Microsoft.Extensions.Options.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.extensions.options/8.0.0/buildTransitive/net6.0/Microsoft.Extensions.Options.targets')" />
@@ -9,6 +13,7 @@
     <Import Project="$(NuGetPackageRoot)communitytoolkit.mvvm/8.2.2/buildTransitive/netstandard2.1/CommunityToolkit.Mvvm.targets" Condition="Exists('$(NuGetPackageRoot)communitytoolkit.mvvm/8.2.2/buildTransitive/netstandard2.1/CommunityToolkit.Mvvm.targets')" />
   </ImportGroup>
   <ImportGroup Condition=" '$(TargetFramework)' == 'net8.0-android' AND '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.targets" Condition="Exists('$(NuGetPackageRoot)xunit.core/2.6.2/build/xunit.core.targets')" />
     <Import Project="$(NuGetPackageRoot)xamarin.androidx.annotation/1.2.0.3/buildTransitive/net6.0-android31.0/Xamarin.AndroidX.Annotation.targets" Condition="Exists('$(NuGetPackageRoot)xamarin.androidx.annotation/1.2.0.3/buildTransitive/net6.0-android31.0/Xamarin.AndroidX.Annotation.targets')" />
     <Import Project="$(NuGetPackageRoot)xamarin.androidx.collection/1.1.0.10/buildTransitive/net6.0-android31.0/Xamarin.AndroidX.Collection.targets" Condition="Exists('$(NuGetPackageRoot)xamarin.androidx.collection/1.1.0.10/buildTransitive/net6.0-android31.0/Xamarin.AndroidX.Collection.targets')" />
     <Import Project="$(NuGetPackageRoot)xamarin.androidx.versionedparcelable/1.1.1.10/buildTransitive/net6.0-android31.0/Xamarin.AndroidX.VersionedParcelable.targets" Condition="Exists('$(NuGetPackageRoot)xamarin.androidx.versionedparcelable/1.1.1.10/buildTransitive/net6.0-android31.0/Xamarin.AndroidX.VersionedParcelable.targets')" />

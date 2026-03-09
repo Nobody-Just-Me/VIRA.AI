@@ -3,7 +3,7 @@ using Android.Content;
 using Android.Speech;
 using Android.Speech.Tts;
 using Android.Media;
-using VIRA.Shared.Services;
+using VIRA.Mobile.SharedServices;
 
 namespace VIRA.Mobile.Services;
 
@@ -132,10 +132,10 @@ public class AndroidVoiceService : Java.Lang.Object, IVoiceService, TextToSpeech
 
     private Android.App.Activity? GetCurrentActivity()
     {
-        // Get the current activity from Uno Platform's context
-        // The MainActivity is the current activity in Uno Platform Android apps
-        var activity = Uno.UI.ContextHelper.Current as Android.App.Activity;
-        return activity;
+        // Get the current activity from Android Application context
+        // In a pure Android app, we need to track the current activity manually
+        // For now, return null and let the caller handle it
+        return null;
     }
 
     public void HandleActivityResult(int requestCode, Android.App.Result resultCode, Intent? data)

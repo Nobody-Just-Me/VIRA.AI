@@ -23,7 +23,9 @@ public class NewsApiService
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
+#if __ANDROID__
             Android.Util.Log.Warn("VIRA_News", "NewsAPI Key not set, using mock data");
+#endif
             return null;
         }
 
@@ -34,7 +36,9 @@ public class NewsApiService
 
             if (!response.IsSuccessStatusCode)
             {
+#if __ANDROID__
                 Android.Util.Log.Error("VIRA_News", $"API Error: {response.StatusCode}");
+#endif
                 return null;
             }
 
@@ -65,7 +69,9 @@ public class NewsApiService
         }
         catch (Exception ex)
         {
+#if __ANDROID__
             Android.Util.Log.Error("VIRA_News", $"Exception: {ex.Message}");
+#endif
             return null;
         }
     }
@@ -110,7 +116,9 @@ public class NewsApiService
         }
         catch (Exception ex)
         {
+#if __ANDROID__
             Android.Util.Log.Error("VIRA_News", $"Category Exception: {ex.Message}");
+#endif
             return null;
         }
     }
